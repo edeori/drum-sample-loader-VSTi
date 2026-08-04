@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0e12">
+  <title>Swarm – Interactive UI Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="plugin-shell">
+    <header class="topbar">
+      <button class="brand" id="brandButton" aria-label="Swarm home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <strong>SWARM</strong><span class="brand-version">v1.0</span>
+      </button>
+      <nav class="main-tabs" aria-label="Fő navigáció">
+        <button class="tab active" data-view="kit">KIT EDITOR</button>
+        <button class="tab" data-view="global">GLOBAL SETTINGS</button>
+      </nav>
+      <div class="preset-strip">
+        <span class="muted-label">PRESET</span>
+        <button class="preset-name">Modern Metal Kit <span>⌄</span></button>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" data-tip="Kit megnyitása" aria-label="Kit megnyitása">▱</button>
+        <button class="icon-btn" id="saveButton" data-tip="Preset mentése" aria-label="Preset mentése">▣</button>
+        <button class="icon-btn" id="settingsButton" data-tip="Beállítások" aria-label="Beállítások">⚙</button>
+        <button class="icon-btn" id="helpButton" data-tip="Súgó" aria-label="Súgó">?</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="main-column">
+        <section class="overview panel">
+          <div class="section-toolbar">
+            <div class="section-heading">
+              <span class="eyebrow">KIT OVERVIEW</span>
+              <span class="count" id="instrumentCount">8 instruments</span>
+            </div>
+            <label class="search-field">
+              <span aria-hidden="true">⌕</span>
+              <input id="searchInput" type="search" placeholder="Search instruments…" autocomplete="off">
+              <kbd>⌘ K</kbd>
+            </label>
+            <div class="toolbar-actions">
+              <button class="button primary" id="addInstrument"><span>＋</span> ADD INSTRUMENT</button>
+              <button class="button" id="importKit"><span>⇧</span> IMPORT KIT</button>
+              <div class="segmented" aria-label="Elrendezés">
+                <button class="active" aria-label="Rács nézet">▦</button><button aria-label="Lista nézet">☷</button>
+              </div>
+            </div>
+          </div>
+          <div class="instrument-grid" id="instrumentGrid"></div>
+        </section>
+
+        <section class="editor panel" id="instrumentEditor">
+          <div class="editor-head">
+            <div class="instrument-title">
+              <img class="mini-drum" id="editorIcon" src="assets/instruments/snare.png" alt="">
+              <div>
+                <span class="eyebrow">INSTRUMENT EDITOR</span>
+                <div class="title-line"><h1 id="editorName">Snare Drum</h1><button class="edit-name" id="editName" aria-label="Átnevezés">✎</button></div>
+                <div class="meta"><span id="editorCategory">Body / Snare</span><i></i><label id="articulationField">ARTICULATION <select id="articulationSelect"></select></label><label>MIDI NOTE <select id="midiNote"></select></label><button class="midi-learn" id="midiLearn">MIDI LEARN</button></div>
+              </div>
+            </div>
+            <div class="editor-actions">
+              <button class="button" id="previewAll"><span class="play-icon">▶</span> PREVIEW ALL</button>
+              <button class="icon-btn" id="instrumentSettings" aria-label="Hangszer beállítások">⚙</button>
+              <button class="icon-btn danger" id="deleteInstrument" aria-label="Hangszer törlése">×</button>
+            </div>
+          </div>
+          <div class="layer-tabs" id="layerTabs"></div>
+          <div class="sample-area">
+            <div class="sample-table-wrap">
+              <table class="sample-table" id="sampleTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section class="mixer panel">
+          <div class="section-label-row"><span class="eyebrow">CHANNEL MIX &amp; ROUTING</span><div class="mixer-status"><span class="reset-hint">DOUBLE-CLICK / ⌘ CTRL + CLICK: RESET TO 0</span><span class="status-dot"><i></i> MULTI-OUT ACTIVE</span></div></div>
+          <div class="mixer-channels" id="mixerChannels"></div>
+        </section>
+      </section>
+
+      <aside class="side-panel" id="sidePanel">
+        <div class="side-head"><div><span class="eyebrow">GLOBAL SETTINGS</span><span class="tiny-status">Applied to all instruments</span></div><button class="icon-btn" id="collapseSide" aria-label="Oldalpanel bezárása">×</button></div>
+
+        <section class="side-card velocity-card">
+          <div class="side-card-title"><span>VELOCITY THRESHOLDS</span><button class="small-reset" id="resetThresholds">RESET</button></div>
+          <label class="field-label">VELOCITY LAYERS
+            <select id="layerCount"><option value="3">3 layers</option><option value="4" selected>4 layers</option><option value="5">5 layers</option></select>
+          </label>
+          <div class="velocity-strip" id="velocityStrip"></div>
+          <div class="threshold-controls" id="thresholdControls"></div>
+          <div class="info-box"><span>i</span><p>Changes apply to all instruments. Samples are reassigned to the nearest layer.</p></div>
+          <button class="button full" id="orphanedButton">VIEW ORPHANED SAMPLES <b>8</b></button>
+        </section>
+
+        <section class="side-card channel-format-card">
+          <div class="side-card-title"><span>MIC CHANNEL FORMAT</span><span class="format-badge">GLOBAL</span></div>
+          <div class="format-grid">
+            <label class="field-label">OVERHEAD SOURCE
+              <select id="overheadFormat"><option value="split" selected>Separate L / R mono</option><option value="stereo">Single stereo channel</option></select>
+            </label>
+            <label class="field-label">ROOM SOURCE
+              <select id="roomFormat"><option value="split" selected>Separate L / R mono</option><option value="stereo">Single stereo channel</option></select>
+            </label>
+          </div>
+          <div class="info-box compact-info"><span>i</span><p>Separate L/R channels are hard-panned by default. Stereo files use one sample cell, fader and route.</p></div>
+        </section>
+
+        <section class="side-card master-card">
+          <div class="side-card-title"><span>MASTER</span><output id="masterOutput">0.0 dB</output></div>
+          <label class="horizontal-control"><span>VOLUME</span><input id="masterVolume" data-fader data-default="0" type="range" min="-60" max="6" step="0.1" value="0"><output>0.0</output></label>
+          <label class="horizontal-control"><span>OVERHEADS</span><input data-fader data-default="0" type="range" min="-24" max="6" step="0.5" value="0"><output>0.0</output></label>
+          <label class="horizontal-control"><span>ROOM</span><input data-fader data-default="0" type="range" min="-24" max="6" step="0.5" value="0"><output>0.0</output></label>
+          <label class="horizontal-control"><span>TUNE</span><input type="range" min="-12" max="12" step="1" value="0"><output>0 st</output></label>
+        </section>
+
+        <section class="side-card meter-card">
+          <div class="side-card-title"><span>MASTER OUTPUT</span><span class="mono">STEREO</span></div>
+          <div class="meter-area">
+            <div class="meter-scale"><span>0</span><span>-12</span><span>-24</span><span>-48</span></div>
+            <div class="meter"><i id="meterL"></i></div><div class="meter"><i id="meterR"></i></div>
+            <div class="meter-readout"><b>L</b><span id="peakL">−∞</span><b>R</b><span id="peakR">−∞</span></div>
+          </div>
+        </section>
+
+        <section class="side-card midi-card">
+          <div class="side-card-title"><span>MIDI MAP</span><button class="small-reset" id="exportMidi">EXPORT</button></div>
+          <div class="midi-list" id="midiList"></div>
+          <button class="button full" id="editMidiMap">EDIT MIDI MAP</button>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <input type="file" id="sampleFile" accept=".wav,.aiff,.aif,audio/wav,audio/aiff" hidden>
+  <input type="file" id="kitFile" accept=".json" hidden>
+
+  <dialog id="instrumentDialog" class="modal">
+    <form method="dialog" id="instrumentForm">
+      <div class="modal-head"><div><span class="eyebrow">NEW INSTRUMENT</span><h2>Add to kit</h2></div><button class="icon-btn" value="cancel" aria-label="Bezárás">×</button></div>
+      <label>INSTRUMENT NAME<input id="newInstrumentName" required value="China 1" maxlength="24"></label>
+      <div class="choice-group"><span>CATEGORY</span><label><input type="radio" name="category" value="Body"><i>◉</i><b>BODY</b><small>Spot, overhead &amp; room mics</small></label><label><input type="radio" name="category" value="Cymbal" checked><i>◒</i><b>CYMBAL</b><small>Overhead &amp; room mics</small></label></div>
+      <label>MIDI NOTE<select id="newMidiNote"><option>C#3</option><option>E2</option><option>G2</option><option>A2</option></select></label>
+      <div class="modal-actions"><button class="button" value="cancel">CANCEL</button><button class="button primary" id="confirmInstrument" value="default">ADD INSTRUMENT</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="infoDialog" class="modal compact">
+    <form method="dialog"><div class="modal-head"><div><span class="eyebrow" id="infoEyebrow">SWARM</span><h2 id="infoTitle">Interactive mockup</h2></div><button class="icon-btn" value="cancel">×</button></div><p id="infoText"></p><div class="modal-actions"><button class="button primary" value="default">GOT IT</button></div></form>
+  </dialog>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>

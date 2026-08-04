@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kit Stage hotspot calibrator</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Helvetica Neue", sans-serif;
+    background: #0a0e12; color: #e6ecf1; display: flex; height: 100vh; overflow: hidden;
+  }
+  #stage {
+    flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
+    background: #05070a; overflow: auto; padding: 20px;
+  }
+  #imgWrap { position: relative; line-height: 0; }
+  #imgWrap img { max-width: 90vw; max-height: 90vh; display: block; user-select: none; -webkit-user-drag: none; }
+  .box {
+    position: absolute; border: 2px solid rgba(120,180,255,.9); background: rgba(80,150,255,.12);
+    box-sizing: border-box; pointer-events: none;
+  }
+  .box.active { border-color: #ffb454; background: rgba(255,180,84,.18); }
+  .box .lbl {
+    position: absolute; top: -18px; left: -2px; font-size: 11px; color: #ffd9a0; white-space: nowrap;
+    text-shadow: 0 1px 2px #000;
+  }
+  .box.active .lbl { color: #ffb454; font-weight: 600; }
+  #drag {
+    position: absolute; border: 2px dashed #6ec2ff; background: rgba(110,194,255,.15); pointer-events: none; display: none;
+  }
+  #panel { width: 340px; background: #11171c; border-left: 1px solid #262f37; padding: 16px; overflow-y: auto; }
+  #panel h1 { font-size: 15px; margin: 0 0 4px; }
+  #panel p.hint { font-size: 11.5px; color: #8a97a1; line-height: 1.5; margin: 0 0 14px; }
+  .row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 8px; border-radius: 4px; cursor: pointer; font-size: 12.5px; margin-bottom: 2px;
+  }
+  .row:hover { background: #1b232a; }
+  .row.selected { background: #2a3f57; }
+  .row .id { font-weight: 600; }
+  .row .coords { color: #8a97a1; font-size: 10.5px; font-family: ui-monospace, monospace; }
+  #addRow { display: flex; gap: 6px; margin: 12px 0; }
+  #addRow input {
+    flex: 1; background: #0c1216; border: 1px solid #303a42; color: #e6ecf1; border-radius: 4px;
+    padding: 6px 8px; font-size: 12.5px;
+  }
+  #addRow button, #copyBtn, #resetBtn {
+    background: #1c2a3a; border: 1px solid #3178c7; color: #cfe4ff; border-radius: 4px;
+    padding: 6px 10px; font-size: 12px; cursor: pointer;
+  }
+  #addRow button:hover, #copyBtn:hover, #resetBtn:hover { background: #24344a; }
+  #copyBtn { width: 100%; margin-top: 14px; padding: 9px; font-weight: 600; }
+  #resetBtn { width: 100%; margin-top: 6px; background: #2a1c1c; border-color: #a35050; color: #ffb4b4; }
+  textarea#out {
+    width: 100%; height: 220px; margin-top: 10px; background: #0a0e12; color: #9fe29f;
+    border: 1px solid #303a42; border-radius: 4px; font: 11px ui-monospace, monospace; padding: 8px; resize: vertical;
+  }
+  #status { font-size: 11px; color: #6ec2ff; min-height: 14px; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="imgWrap">
+    <img id="photo" src="../assets/stage/drumset.png" alt="Kit stage photo" draggable="false">
+    <div id="drag"></div>
+  </div>
+</div>
+
+<div id="panel">
+  <h1>Kit Stage hotspot calibrator</h1>
+  <p class="hint">
+    Click an instrument in the list to select it (orange = active), then click-drag directly
+    on the photo to redraw its box. Pre-loaded with the current in-app coordinates — just
+    nudge the ones that are off. When done, hit <b>Copy C++</b> and paste the result into
+    <code>KitStageView.cpp</code>'s <code>defaultHotspots()</code>. The separate
+    <b>ride:bell</b> hotspot is selected initially so you can draw it over the exact bell area.
+  </p>
+
+  <div id="list"></div>
+
+  <div id="addRow">
+    <input id="newId" type="text" placeholder="new instrument id (e.g. splash2)">
+    <button id="addBtn">Add</button>
+  </div>
+
+  <button id="copyBtn">Copy C++ map literal</button>
+  <button id="resetBtn">Reset to defaults</button>
+  <div id="status"></div>
+  <textarea id="out" readonly></textarea>
+</div>
+
+<script>
+// Starting point = the coordinates currently baked into KitStageView.cpp.
+const DEFAULTS = {
+  crash1:     [0.154, 0.052, 0.179, 0.097],
+  hihat:      [0.089, 0.250, 0.158, 0.084],
+  splash:     [0.449, 0.143, 0.082, 0.057],
+  tom1:       [0.306, 0.204, 0.127, 0.088],
+  tom2:       [0.499, 0.205, 0.125, 0.088],
+  snare:      [0.243, 0.368, 0.153, 0.072],
+  kick:       [0.361, 0.437, 0.221, 0.300],
+  tom3:       [0.588, 0.358, 0.161, 0.077],
+  tom4:       [0.713, 0.425, 0.156, 0.104],
+  ride:       [0.762, 0.344, 0.212, 0.113],
+  'ride:bell':[0.841, 0.355, 0.059, 0.043],
+  china:      [0.782, 0.161, 0.192, 0.133],
+  crash2:     [0.612, 0.091, 0.194, 0.140],
+};
+
+let boxes = JSON.parse(JSON.stringify(DEFAULTS));
+let order = Object.keys(boxes);
+let activeId = 'ride:bell';
+
+const img = document.getElementById('photo');
+const imgWrap = document.getElementById('imgWrap');
+const dragEl = document.getElementById('drag');
+const listEl = document.getElementById('list');
+const statusEl = document.getElementById('status');
+
+function fmt(n) { return n.toFixed(3); }
+
+function renderList() {
+  listEl.innerHTML = '';
+  order.forEach(id => {
+    const [x, y, w, h] = boxes[id];
+    const row = document.createElement('div');
+    row.className = 'row' + (id === activeId ? ' selected' : '');
+    row.innerHTML = `<span class="id">${id}</span><span class="coords">${fmt(x)},${fmt(y)},${fmt(w)},${fmt(h)}</span>`;
+    row.onclick = () => { activeId = id; renderList(); renderBoxes(); };
+    listEl.appendChild(row);
+  });
+}
+
+function renderBoxes() {
+  imgWrap.querySelectorAll('.box').forEach(el => el.remove());
+  const w = img.clientWidth, h = img.clientHeight;
+  order.forEach(id => {
+    const [nx, ny, nw, nh] = boxes[id];
+    const el = document.createElement('div');
+    el.className = 'box' + (id === activeId ? ' active' : '');
+    el.style.left = (nx * w) + 'px';
+    el.style.top = (ny * h) + 'px';
+    el.style.width = (nw * w) + 'px';
+    el.style.height = (nh * h) + 'px';
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    lbl.textContent = id;
+    el.appendChild(lbl);
+    imgWrap.appendChild(el);
+  });
+}
+
+function imgLoaded() { renderBoxes(); }
+if (img.complete) imgLoaded(); else img.onload = imgLoaded;
+window.addEventListener('resize', renderBoxes);
+
+// --- click-drag to redraw the active instrument's box ---
+let dragging = false, startX = 0, startY = 0;
+
+imgWrap.addEventListener('mousedown', e => {
+  if (e.target !== img && e.target !== imgWrap) return;
+  const rect = img.getBoundingClientRect();
+  startX = e.clientX - rect.left;
+  startY = e.clientY - rect.top;
+  dragging = true;
+  dragEl.style.display = 'block';
+  dragEl.style.left = startX + 'px';
+  dragEl.style.top = startY + 'px';
+  dragEl.style.width = '0px';
+  dragEl.style.height = '0px';
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = img.getBoundingClientRect();
+  const curX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+  const curY = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+  const x = Math.min(startX, curX), y = Math.min(startY, curY);
+  const w = Math.abs(curX - startX), h = Math.abs(curY - startY);
+  dragEl.style.left = x + 'px'; dragEl.style.top = y + 'px';
+  dragEl.style.width = w + 'px'; dragEl.style.height = h + 'px';
+});
+
+window.addEventListener('mouseup', e => {
+  if (!dragging) return;
+  dragging = false;
+  dragEl.style.display = 'none';
+  const rect = img.getBoundingClientRect();
+  const curX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+  const curY = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+  const x = Math.min(startX, curX), y = Math.min(startY, curY);
+  const w = Math.abs(curX - startX), h = Math.abs(curY - startY);
+  if (w < 4 || h < 4) return; // ignore accidental clicks
+  boxes[activeId] = [x / rect.width, y / rect.height, w / rect.width, h / rect.height];
+  statusEl.textContent = `Updated "${activeId}".`;
+  renderList();
+  renderBoxes();
+});
+
+document.getElementById('addBtn').onclick = () => {
+  const id = document.getElementById('newId').value.trim();
+  if (!id) return;
+  if (!boxes[id]) { boxes[id] = [0.45, 0.45, 0.1, 0.1]; order.push(id); }
+  activeId = id;
+  document.getElementById('newId').value = '';
+  renderList();
+  renderBoxes();
+  statusEl.textContent = `Added "${id}" — drag on the photo to place it.`;
+};
+
+document.getElementById('resetBtn').onclick = () => {
+  boxes = JSON.parse(JSON.stringify(DEFAULTS));
+  order = Object.keys(boxes);
+  activeId = 'ride:bell';
+  renderList();
+  renderBoxes();
+  statusEl.textContent = 'Reset to the defaults currently in KitStageView.cpp.';
+};
+
+document.getElementById('copyBtn').onclick = () => {
+  const lines = order.map(id => {
+    const [x, y, w, h] = boxes[id];
+    return `        { "${id}", { ${fmt(x)}f, ${fmt(y)}f, ${fmt(w)}f, ${fmt(h)}f } },`;
+  });
+  const text = lines.join('\n');
+  const out = document.getElementById('out');
+  out.value = text;
+  out.select();
+  try { document.execCommand('copy'); statusEl.textContent = 'Copied to clipboard (also shown below).'; }
+  catch (e) { statusEl.textContent = 'Could not auto-copy — select the text below and copy manually.'; }
+};
+
+renderList();
+</script>
+
+</body>
+</html>

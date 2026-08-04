@@ -1,0 +1,22 @@
+# Build output (CMake out-of-source build, incl. package.sh's signed .pkg)
+build/
+build-*/
+
+# macOS
+.DS_Store
+
+# Xcode (some Moth Production plugins are built with the Xcode generator)
+*.xcodeproj/
+DerivedData/
+
+# CMake
+CMakeUserPresets.json
+compile_commands.json
+
+# Editor / IDE
+.vscode/
+.idea/
+*.user
+
+# Claude Code local session/permission state (machine-specific, not shared)
+.claude/
