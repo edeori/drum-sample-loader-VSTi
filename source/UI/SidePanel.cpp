@@ -66,7 +66,7 @@ void GlobalMixerCard::rebuildRows()
 
         row->valueLabel.setJustificationType(juce::Justification::centred);
         row->valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffc8d0d6));
-        row->valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+        row->valueLabel.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
         row->valueLabel.setText(juce::String(faderValue, 1) + " dB", juce::dontSendNotification);
         makeDbLabelEditable(row->valueLabel, row->fader);
         addAndMakeVisible(row->valueLabel);
@@ -99,7 +99,7 @@ void GlobalMixerCard::rebuildRows()
             row->panValueLabel.setText(panDisplayText(*panValue), juce::dontSendNotification);
             row->panValueLabel.setJustificationType(juce::Justification::centred);
             row->panValueLabel.setColour(juce::Label::textColourId, Colours::muted);
-            row->panValueLabel.setFont(DrumVaultLookAndFeel::bodyFont(8.0f));
+            row->panValueLabel.setFont(DrumVaultLookAndFeel::numericFont(9.0f));
             addAndMakeVisible(row->panValueLabel);
         }
 
@@ -225,7 +225,7 @@ void GlobalMixerCard::paint(juce::Graphics& g)
 
         // dB scale: a short tick flush against the fader, with the number
         // label to its left so the two never overlap.
-        g.setFont(DrumVaultLookAndFeel::bodyFont(7.0f));
+        g.setFont(DrumVaultLookAndFeel::numericFont(8.0f));
         constexpr float tickLen = 5.0f;
         for (float db : { 6.0f, 0.0f, -3.0f, -6.0f, -12.0f, -24.0f, -40.0f, -60.0f })
         {
@@ -352,7 +352,7 @@ void MasterStripPanel::refresh()
 
     valueLabel.setJustificationType(juce::Justification::centred);
     valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffc8d0d6));
-    valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+    valueLabel.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
     valueLabel.setText(juce::String(kit.masterDb, 1) + " dB", juce::dontSendNotification);
     makeDbLabelEditable(valueLabel, fader);
     addAndMakeVisible(valueLabel);
@@ -373,7 +373,7 @@ void MasterStripPanel::paint(juce::Graphics& g)
 
     const auto faderBounds = fader.getBounds();
 
-    g.setFont(DrumVaultLookAndFeel::bodyFont(7.0f));
+    g.setFont(DrumVaultLookAndFeel::numericFont(8.0f));
     constexpr float tickLen = 5.0f;
     for (float db : { 6.0f, 0.0f, -3.0f, -6.0f, -12.0f, -24.0f, -40.0f, -60.0f })
     {
@@ -567,7 +567,7 @@ void VelocityThresholdsCard::rebuildThresholdRows()
         addAndMakeVisible(row->nameLabel);
 
         row->valueLabel.setJustificationType(juce::Justification::centred);
-        row->valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+        row->valueLabel.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
         row->valueLabel.setText(juce::String(config.thresholds[(size_t) i]), juce::dontSendNotification);
         addAndMakeVisible(row->valueLabel);
 
@@ -671,7 +671,7 @@ MasterCard::MasterCard(KitEditController& controllerToUse)
     addAndMakeVisible(titleLabel);
 
     outputLabel.setJustificationType(juce::Justification::centredRight);
-    outputLabel.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
+    outputLabel.setFont(DrumVaultLookAndFeel::numericFont(11.0f));
     addAndMakeVisible(outputLabel);
 
     auto& kit = controllerToUse.getWorkingKit();
@@ -713,7 +713,7 @@ void MasterCard::setupRow(Row& row, const juce::String& name, double lo, double 
 
     row.value.setJustificationType(juce::Justification::centredRight);
     row.value.setColour(juce::Label::textColourId, juce::Colour(0xffc8d0d6));
-    row.value.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+    row.value.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
     const int decimals = unit == "st" ? 0 : 1;
     row.value.setText(juce::String(initial, decimals) + " " + unit, juce::dontSendNotification);
     if (unit == "dB")
@@ -813,7 +813,7 @@ void MeterCard::paint(juce::Graphics& g)
     area.removeFromTop(8);
     auto readout = area.removeFromTop(20);
     g.setColour(Colours::text);
-    g.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+    g.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
     g.drawText("L " + (peakDbL <= -99.0f ? juce::String("-inf") : juce::String(peakDbL, 1)),
                readout.removeFromLeft(readout.getWidth() / 2), juce::Justification::centredLeft);
     g.drawText("R " + (peakDbR <= -99.0f ? juce::String("-inf") : juce::String(peakDbR, 1)),
@@ -952,7 +952,7 @@ void MidiMapCard::paint(juce::Graphics& g)
             auto row = juce::Rectangle<int>(listBounds.getX(), y, listBounds.getWidth(), 24).reduced(7, 0);
 
             g.setColour(Colours::blueBright);
-            g.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+            g.setFont(DrumVaultLookAndFeel::numericFont(10.0f));
             g.drawText(articulation.midiNote >= 0 ? midiNoteToName(articulation.midiNote) : "-",
                        row.removeFromLeft(35), juce::Justification::centredLeft);
 

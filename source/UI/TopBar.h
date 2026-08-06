@@ -30,6 +30,7 @@ private:
     ToastOverlay& toasts;
     ModalHost& modalHost;
     std::function<void(ViewMode)> onTabChanged;
+    juce::Image mothLogo;
 
     juce::TextButton brandButton { "SWARM" };
     juce::TextButton stageTab { "KIT" }, kitTab { "KIT EDITOR" }, mixerTab { "GLOBAL MIXER" }, globalTab { "GLOBAL SETTINGS" };

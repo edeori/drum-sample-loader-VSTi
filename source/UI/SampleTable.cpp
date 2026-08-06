@@ -72,7 +72,8 @@ juce::Rectangle<int> SampleTable::getSlotRemoveButtonBounds(juce::Rectangle<int>
 
 void SampleTable::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff131a1f));
+    g.fillAll(juce::Colour(0xff080a0e));
+    paintMetalTexture(g, getLocalBounds().toFloat(), 0.07f);
 
     auto* inst = controller.getSelectedInstrument();
     auto* articulation = controller.getSelectedArticulation();
@@ -83,32 +84,32 @@ void SampleTable::paint(juce::Graphics& g)
 
     auto& layer = articulation->velocityLayers[(size_t) layerIndex];
 
-    g.setColour(juce::Colour(0xff10161a));
+    g.setColour(juce::Colour(0xff06080b).withAlpha(0.94f));
     g.fillRect(0, 0, getWidth(), headerHeight);
-    g.setColour(juce::Colour(0xff151d22));
+    g.setColour(juce::Colour(0xff101319).withAlpha(0.96f));
     g.fillRect(0, 0, rowHeaderWidth, getHeight());
 
-    g.setColour(juce::Colour(0xffaeb8bf));
+    g.setColour(Colours::muted.brighter(0.22f));
     g.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
     g.drawText("MIC CHANNELS", 14, 0, rowHeaderWidth - 14, headerHeight, juce::Justification::centredLeft);
 
     for (auto& sh : slotHeaderRects)
     {
-        g.setColour(juce::Colour(0xff2a353d));
+        g.setColour(Colours::line);
         g.drawRect(sh.bounds);
 
         const auto removeButton = getSlotRemoveButtonBounds(sh.bounds);
         const auto labelArea = sh.bounds.withRight(removeButton.getX() - 2).reduced(8, 0);
-        g.setColour(juce::Colour(0xffaeb8bf));
+        g.setColour(Colours::muted.brighter(0.22f));
         g.drawText("Slot " + juce::String(sh.slotIndex + 1), labelArea, juce::Justification::centredLeft);
 
         const bool hoveredRemove = sh.slotIndex == hoveredSlotRemoveIndex;
         if (hoveredRemove)
         {
-            g.setColour(juce::Colour(0xff4a2b2d));
+            g.setColour(Colours::red.withAlpha(0.18f));
             g.fillRoundedRectangle(removeButton.toFloat().expanded(2.0f), 3.0f);
         }
-        g.setColour(hoveredRemove ? juce::Colour(0xffe6b0b0) : juce::Colour(0xff5c6870));
+        g.setColour(hoveredRemove ? Colours::red.brighter(0.35f) : Colours::muted);
         g.drawText(juce::String::charToString((juce::juce_wchar) 0x2715), removeButton, juce::Justification::centred);
     }
 
@@ -125,10 +126,10 @@ void SampleTable::paint(juce::Graphics& g)
     for (auto& mic : inst->micChannels)
     {
         const juce::Rectangle<int> rb(0, y, rowHeaderWidth, rowHeight);
-        g.setColour(juce::Colour(0xffc7d0d7));
+        g.setColour(Colours::text.withAlpha(0.84f));
         g.setFont(DrumVaultLookAndFeel::bodyFont(11.0f));
         g.drawText(mic.displayName.isNotEmpty() ? mic.displayName : mic.id, rb.reduced(14, 0), juce::Justification::centredLeft);
-        g.setColour(juce::Colour(0xff283239));
+        g.setColour(Colours::lineSoft);
         g.drawHorizontalLine(y + rowHeight, 0.0f, (float) getWidth());
         y += rowHeight;
     }
@@ -148,7 +149,7 @@ void SampleTable::paint(juce::Graphics& g)
         const auto* sampleRef = slot.find(cell.micChannelId);
         const bool filled = sampleRef != nullptr && sampleRef->sourcePath.isNotEmpty();
 
-        g.setColour(juce::Colour(0xff2a353d));
+        g.setColour(Colours::lineSoft);
         g.drawRect(cell.bounds);
 
         if (filled)
@@ -157,7 +158,7 @@ void SampleTable::paint(juce::Graphics& g)
             const auto textArea = cell.bounds.withRight(clearButton.getX() - 2);
             const bool loaded = sampleRef->isLoaded();
 
-            g.setColour(loaded ? juce::Colour(0xffa8b5be) : Colours::red);
+            g.setColour(loaded ? Colours::text.withAlpha(0.76f) : Colours::red);
             g.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
             const auto fileName = juce::File(sampleRef->sourcePath).getFileName();
             const auto prefix = loaded
@@ -169,15 +170,15 @@ void SampleTable::paint(juce::Graphics& g)
             const bool hovered = i == hoveredClearButtonIndex;
             if (hovered)
             {
-                g.setColour(juce::Colour(0xff3a4a56));
+                g.setColour(Colours::blue.withAlpha(0.16f));
                 g.fillRoundedRectangle(clearButton.toFloat().expanded(2.0f), 3.0f);
             }
-            g.setColour(hovered ? juce::Colour(0xffdde4e8) : juce::Colour(0xff5c6870));
+            g.setColour(hovered ? Colours::blueBright : Colours::muted);
             g.drawText(juce::String::charToString((juce::juce_wchar) 0x2715), clearButton, juce::Justification::centred);
         }
         else
         {
-            g.setColour(juce::Colour(0xff4b5861));
+            g.setColour(Colours::muted.withAlpha(0.72f));
             g.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
             g.drawText("+  Load sample", cell.bounds, juce::Justification::centred);
         }

@@ -41,7 +41,7 @@ MixerChannelStrip::MixerChannelStrip(KitEditController& controllerToUse, juce::S
     valueLabel.setText(juce::String(fader.getValue(), 1) + " dB", juce::dontSendNotification);
     valueLabel.setJustificationType(juce::Justification::centred);
     valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffcbd3d9));
-    valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
+    valueLabel.setFont(DrumVaultLookAndFeel::numericFont(10.5f));
     makeDbLabelEditable(valueLabel, fader);
     addAndMakeVisible(valueLabel);
 
@@ -54,7 +54,7 @@ MixerChannelStrip::MixerChannelStrip(KitEditController& controllerToUse, juce::S
     panLabel.setJustificationType(juce::Justification::centred);
     panLabel.setColour(juce::Label::textColourId,
                        std::abs(pan) > 0.999f ? Colours::blueBright : Colours::muted);
-    panLabel.setFont(DrumVaultLookAndFeel::bodyFont(8.0f));
+    panLabel.setFont(DrumVaultLookAndFeel::numericFont(9.0f));
     addAndMakeVisible(panLabel);
 }
 

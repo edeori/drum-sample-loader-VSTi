@@ -52,6 +52,13 @@ void HotspotPad::paint(juce::Graphics& g)
 
     juce::Rectangle<float> markerArea = b;
 
+    // The kick hotspot is deliberately tall so its whole front head remains
+    // easy to click. Its visual centre therefore sits slightly below the
+    // natural focal point of the drum head; lift only the hit marker while
+    // keeping the existing clickable ellipse unchanged.
+    if (displayMode == DisplayMode::Hotspot && instrumentId == "kick")
+        markerArea.translate(0.0f, -b.getHeight() * 0.08f);
+
     if (displayMode == DisplayMode::StandaloneTile)
     {
         g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1d2429), b.getX(), b.getY(),

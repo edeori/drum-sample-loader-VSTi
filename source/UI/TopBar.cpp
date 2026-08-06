@@ -6,12 +6,21 @@
 
 namespace dsl::ui
 {
+namespace
+{
+constexpr int brandWidth = 170;
+constexpr int navigationDesignWidth = 428;
+}
 
 TopBar::TopBar(KitEditController& controllerToUse, ToastOverlay& toastsToUse, ModalHost& modalHostToUse,
                std::function<void(ViewMode)> onTabChangedToUse)
     : controller(controllerToUse), toasts(toastsToUse), modalHost(modalHostToUse),
       onTabChanged(std::move(onTabChangedToUse))
 {
+    mothLogo = loadReadableMothLogo(110);
+    brandButton.setButtonText({});
+    brandButton.getProperties().set("brand", true);
+    brandButton.setTooltip("Open the Swarm manual");
     brandButton.onClick = [this]
     {
         modalHost.show(std::make_unique<ManualDialog>(modalHost), ManualDialog::width, ManualDialog::height);
@@ -183,22 +192,47 @@ void TopBar::handleDrumsetExportResult(DrumsetExporter::Result result, bool wasU
 
 void TopBar::paint(juce::Graphics& g)
 {
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff151b20), 0, 0, juce::Colour(0xff0c1115), 0, (float) getHeight(), false));
+    auto bounds = getLocalBounds().toFloat();
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff15181d), 0, 0,
+                                            juce::Colour(0xff07080b), 0, (float) getHeight(), false));
     g.fillAll();
-    g.setColour(juce::Colour(0xff303941));
+    paintMetalTexture(g, bounds, 0.16f);
+
+    g.setColour(juce::Colours::white.withAlpha(0.045f));
+    g.drawHorizontalLine(1, 4.0f, (float) getWidth() - 4.0f);
+    g.setColour(Colours::line);
     g.drawHorizontalLine(getHeight() - 1, 0.0f, (float) getWidth());
-    g.drawVerticalLine(220, 0.0f, (float) getHeight());
+    g.setColour(Colours::blue.withAlpha(0.32f));
+    g.drawHorizontalLine(getHeight() - 2, (float) brandWidth,
+                         (float) brandWidth + (float) navigationDesignWidth);
+
+    g.setColour(juce::Colour(0xffa8adb7));
+    g.setFont(DrumVaultLookAndFeel::bodyFont(8.5f));
+    g.drawText(withLetterSpacing("MOTH PRODUCTION"), 20, 7, 130, 13, juce::Justification::centredLeft);
+    g.setColour(Colours::text);
+    g.setFont(DrumVaultLookAndFeel::displayFont(16.0f));
+    g.drawText("SWARM", 20, 22, 130, 24, juce::Justification::centredLeft);
+
+    if (mothLogo.isValid())
+    {
+        const float logoHeight = 22.0f;
+        const float logoWidth = logoHeight * (592.0f / 380.0f);
+        const juce::Rectangle<float> logoBounds(((float) getWidth() - logoWidth) * 0.5f,
+                                                 ((float) getHeight() - logoHeight) * 0.5f,
+                                                 logoWidth, logoHeight);
+        g.setOpacity(0.72f);
+        g.drawImage(mothLogo, logoBounds, juce::RectanglePlacement::centred);
+        g.setOpacity(1.0f);
+    }
+
+    g.setColour(Colours::line.withAlpha(0.72f));
+    g.drawVerticalLine(brandWidth, 0.0f, (float) getHeight());
 }
 
 void TopBar::resized()
 {
     auto area = getLocalBounds();
-    brandButton.setBounds(area.removeFromLeft(220));
-
-    stageTab.setBounds(area.removeFromLeft(108));
-    kitTab.setBounds(area.removeFromLeft(118));
-    mixerTab.setBounds(area.removeFromLeft(138));
-    globalTab.setBounds(area.removeFromLeft(138));
+    brandButton.setBounds(area.removeFromLeft(brandWidth));
 
 #if JucePlugin_Build_Standalone
     if (audioMidiButton.isVisible())
@@ -214,6 +248,34 @@ void TopBar::resized()
     newButton.setBounds(right.removeFromRight(56));
     right.removeFromRight(6);
     drumsetButton.setBounds(right);
+
+    // Keep the Moth mark at the geometric centre of the whole editor. All
+    // four view tabs form one group to its left, matching the shared header
+    // hierarchy while leaving the file/actions group on the right.
+    constexpr int logoHalfClearance = 52;
+    const int centreX = getWidth() / 2;
+
+    const int availableNavigationWidth = juce::jmax(0, centreX - logoHalfClearance - brandWidth);
+    auto leftNav = juce::Rectangle<int>(brandWidth, 0,
+                                         juce::jmin(navigationDesignWidth, availableNavigationWidth),
+                                         getHeight());
+    constexpr int totalDesignWidth = 108 + 118 + 138 + 138;
+    auto takeWeighted = [&leftNav](int weight, int remainingWeight)
+    {
+        const int width = remainingWeight > 0
+            ? juce::roundToInt((float) leftNav.getWidth() * (float) weight / (float) remainingWeight)
+            : 0;
+        return leftNav.removeFromLeft(width);
+    };
+
+    int remainingWeight = totalDesignWidth;
+    stageTab.setBounds(takeWeighted(108, remainingWeight));
+    remainingWeight -= 108;
+    kitTab.setBounds(takeWeighted(118, remainingWeight));
+    remainingWeight -= 118;
+    mixerTab.setBounds(takeWeighted(138, remainingWeight));
+    remainingWeight -= 138;
+    globalTab.setBounds(leftNav);
 }
 
 } // namespace dsl::ui

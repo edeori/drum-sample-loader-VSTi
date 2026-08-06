@@ -31,16 +31,25 @@ void InstrumentCard::paint(juce::Graphics& g)
     const bool selected = instrumentId == controller.getSelectedInstrumentId();
     auto b = getLocalBounds().toFloat();
 
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1d2429), b.getX(), b.getY(),
-                                            juce::Colour(0xff12181c), b.getX(), b.getBottom(), false));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff16191f), b.getX(), b.getY(),
+                                            juce::Colour(0xff080a0d), b.getX(), b.getBottom(), false));
     g.fillRoundedRectangle(b, 4.0f);
-    g.setColour(selected ? Colours::blue : juce::Colour(0xff303a42));
+    g.saveState();
+    juce::Path textureClip;
+    textureClip.addRoundedRectangle(b, 4.0f);
+    g.reduceClipRegion(textureClip);
+    paintMetalTexture(g, b, 0.12f);
+    g.restoreState();
+
+    g.setColour(selected ? Colours::blue : Colours::line);
     g.drawRoundedRectangle(b.reduced(0.5f), 4.0f, selected ? 1.5f : 1.0f);
 
     if (selected)
     {
-        g.setColour(Colours::blue);
+        g.setColour(Colours::blueBright);
         g.fillEllipse(b.getRight() - 15.0f, b.getY() + 7.0f, 6.0f, 6.0f);
+        g.setColour(Colours::blue.withAlpha(0.72f));
+        g.fillRect(b.getX(), b.getY() + 6.0f, 2.0f, b.getHeight() - 12.0f);
     }
 
     if (art.isValid())
@@ -54,7 +63,7 @@ void InstrumentCard::paint(juce::Graphics& g)
     g.setFont(DrumVaultLookAndFeel::displayFont(16.0f));
     g.drawText(inst->name, textArea.removeFromTop(20), juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(0xffb9c2c9));
+    g.setColour(Colours::muted.brighter(0.22f));
     g.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
     const auto* primary = inst->primaryArticulation();
     const auto noteText = inst->articulations.size() > 1

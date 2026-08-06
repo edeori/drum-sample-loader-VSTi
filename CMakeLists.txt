@@ -59,6 +59,15 @@ juce_add_binary_data(DrumVaultAssets
         assets/instruments/cymbal.png
         assets/stage/drumset.png
         assets/stage/standalone-cymbal.png
+        assets/ui/moth-metal-texture.png
+        assets/ui/moth_logo.png
+        assets/ui/components/moth-button-off.png
+        assets/ui/components/moth-button-on.png
+        assets/ui/components/moth-slider-thumb.png
+        assets/ui/fonts/Oxanium-Bold.ttf
+        assets/ui/fonts/BarlowCondensed-Light.ttf
+        assets/ui/fonts/BarlowCondensed-Medium.ttf
+        assets/ui/fonts/Rajdhani-Medium.ttf
 )
 
 juce_add_plugin(DrumSampleLoaderVSTi
@@ -81,6 +90,7 @@ target_sources(DrumSampleLoaderVSTi
         source/PluginProcessor.cpp
         source/PluginEditor.cpp
         source/UI/DrumVaultLookAndFeel.cpp
+        source/UI/SwarmFonts.cpp
         source/UI/KitEditController.cpp
         source/UI/Dialogs.cpp
         source/UI/KitOverviewPanel.cpp

@@ -8,23 +8,29 @@ namespace dsl::ui
 // Colour language lifted from mockup/styles.css (:root custom properties).
 namespace Colours
 {
-    const juce::Colour bg          { 0xff070a0d };
-    const juce::Colour panel       { 0xff11171c };
-    const juce::Colour panel2      { 0xff151c22 };
-    const juce::Colour line        { 0xff2a343d };
-    const juce::Colour lineSoft    { 0xff202930 };
-    const juce::Colour text        { 0xffedf2f6 };
-    const juce::Colour muted       { 0xff84909a };
-    const juce::Colour blue        { 0xff4b9cf6 };
-    const juce::Colour blueBright  { 0xff72b9ff };
-    const juce::Colour blueDark    { 0xff153d6d };
-    const juce::Colour green       { 0xff71bd56 };
-    const juce::Colour yellow      { 0xffe2b849 };
-    const juce::Colour red         { 0xffd65759 };
+    const juce::Colour bg          { 0xff050609 };
+    const juce::Colour panel       { 0xff0b0d12 };
+    const juce::Colour panel2      { 0xff11141a };
+    const juce::Colour line        { 0xff303640 };
+    const juce::Colour lineSoft    { 0xff1c2027 };
+    const juce::Colour text        { 0xffe8ebf1 };
+    const juce::Colour muted       { 0xff79818e };
+    const juce::Colour blue        { 0xff42d6ff };
+    const juce::Colour blueBright  { 0xff78e5ff };
+    const juce::Colour blueDark    { 0xff123946 };
+    const juce::Colour violet      { 0xff8a43ff };
+    const juce::Colour green       { 0xff6ee48d };
+    const juce::Colour yellow      { 0xffffb521 };
+    const juce::Colour red         { 0xffff4b54 };
 }
 
-// Shared "panel"/"side-card" chrome (border + subtle gradient), matching
-// mockup/styles.css .panel / .side-card. Used by every top-level section.
+juce::String withLetterSpacing(const juce::String& text);
+void paintMetalTexture(juce::Graphics& g, juce::Rectangle<float> bounds, float opacity = 0.10f);
+void paintHardwareScrew(juce::Graphics& g, juce::Point<float> centre, float radius);
+juce::Image loadReadableMothLogo(int pixelHeight);
+
+// Shared Moth Production recessed panel chrome. Used by every top-level
+// section without changing any of their existing bounds or responsibilities.
 void paintPanelBackground(juce::Graphics& g, juce::Rectangle<float> bounds, float cornerRadius = 5.0f);
 
 /** Makes a fader's existing "X.X dB" value label double-click editable:
@@ -63,10 +69,8 @@ private:
     bool resetEnabled = true;
 };
 
-/** House look for the whole plugin editor: dark panels, blue accent, condensed
-    display headings — matching mockup/styles.css as closely as native JUCE
-    widget drawing reasonably allows.
-*/
+/** Moth Production house look: black machined surfaces, cyan instrument
+    accents and the shared Oxanium/Barlow Condensed/Rajdhani font stack. */
 class DrumVaultLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
@@ -74,9 +78,12 @@ public:
 
     static juce::Font displayFont(float height, bool bold = true);
     static juce::Font bodyFont(float height, bool bold = false);
+    static juce::Font numericFont(float height);
 
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                                bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+    void drawButtonText(juce::Graphics&, juce::TextButton&, bool shouldDrawButtonAsHighlighted,
+                        bool shouldDrawButtonAsDown) override;
 
     void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
                            float sliderPos, float minSliderPos, float maxSliderPos,
@@ -88,6 +95,10 @@ public:
     juce::Font getLabelFont(juce::Label&) override;
     juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
     juce::Font getComboBoxFont(juce::ComboBox&) override;
+    juce::Font getPopupMenuFont() override;
+
+private:
+    juce::Image buttonOffImage, buttonOnImage, sliderThumbImage;
 };
 
 } // namespace dsl::ui

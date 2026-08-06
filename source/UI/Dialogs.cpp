@@ -4,6 +4,17 @@
 
 namespace dsl::ui
 {
+namespace
+{
+void paintDialogChrome(juce::Graphics& g, juce::Rectangle<float> bounds)
+{
+    paintPanelBackground(g, bounds, 7.0f);
+    g.setColour(Colours::blue.withAlpha(0.42f));
+    g.drawHorizontalLine(1, 10.0f, bounds.getRight() - 10.0f);
+    paintHardwareScrew(g, { 11.0f, 11.0f }, 4.0f);
+    paintHardwareScrew(g, { bounds.getRight() - 11.0f, 11.0f }, 4.0f);
+}
+}
 
 // ---------------------------------------------------------------- ModalHost
 
@@ -119,11 +130,7 @@ AddInstrumentDialog::AddInstrumentDialog(KitEditController& controllerToUse, Mod
 void AddInstrumentDialog::paint(juce::Graphics& g)
 {
     auto b = getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff182127), b.getX(), b.getY(),
-                                            juce::Colour(0xff0e1418), b.getX(), b.getBottom(), false));
-    g.fillRoundedRectangle(b, 6.0f);
-    g.setColour(juce::Colour(0xff3a4750));
-    g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+    paintDialogChrome(g, b);
 
     g.setColour(Colours::muted);
     g.setFont(DrumVaultLookAndFeel::displayFont(10.0f));
@@ -221,11 +228,7 @@ ChannelSettingsDialog::ChannelSettingsDialog(KitEditController& controllerToUse,
 void ChannelSettingsDialog::paint(juce::Graphics& g)
 {
     auto b = getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff182127), b.getX(), b.getY(),
-                                            juce::Colour(0xff0e1418), b.getX(), b.getBottom(), false));
-    g.fillRoundedRectangle(b, 6.0f);
-    g.setColour(juce::Colour(0xff3a4750));
-    g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+    paintDialogChrome(g, b);
 }
 
 void ChannelSettingsDialog::resized()
@@ -289,11 +292,7 @@ ExportDrumsetNameDialog::ExportDrumsetNameDialog(ModalHost& hostToUse, const juc
 void ExportDrumsetNameDialog::paint(juce::Graphics& g)
 {
     auto b = getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff182127), b.getX(), b.getY(),
-                                            juce::Colour(0xff0e1418), b.getX(), b.getBottom(), false));
-    g.fillRoundedRectangle(b, 6.0f);
-    g.setColour(juce::Colour(0xff3a4750));
-    g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+    paintDialogChrome(g, b);
 
     g.setColour(Colours::muted);
     g.setFont(DrumVaultLookAndFeel::displayFont(10.0f));
@@ -329,11 +328,7 @@ InfoDialog::InfoDialog(ModalHost& hostToUse, const juce::String& eyebrow, const 
 void InfoDialog::paint(juce::Graphics& g)
 {
     auto b = getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff182127), b.getX(), b.getY(),
-                                            juce::Colour(0xff0e1418), b.getX(), b.getBottom(), false));
-    g.fillRoundedRectangle(b, 6.0f);
-    g.setColour(juce::Colour(0xff3a4750));
-    g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+    paintDialogChrome(g, b);
 
     auto area = getLocalBounds().reduced(18);
     g.setColour(Colours::muted);
@@ -516,11 +511,8 @@ ManualDialog::ManualDialog(ModalHost& hostToUse)
 void ManualDialog::paint(juce::Graphics& g)
 {
     auto b = getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff182127), b.getX(), b.getY(),
-                                            juce::Colour(0xff0e1418), b.getX(), b.getBottom(), false));
-    g.fillRoundedRectangle(b, 6.0f);
-    g.setColour(juce::Colour(0xff3a4750));
-    g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+    paintDialogChrome(g, b);
+    g.setColour(Colours::line);
     g.drawHorizontalLine(52, 18.0f, (float) getWidth() - 18.0f);
 }
 

@@ -41,6 +41,25 @@ DrumVaultEditor::~DrumVaultEditor()
 void DrumVaultEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Colours::bg);
+
+    auto bounds = getLocalBounds().toFloat();
+    paintMetalTexture(g, bounds, 0.34f);
+
+    juce::ColourGradient vignette(juce::Colours::transparentBlack, bounds.getCentreX(), bounds.getCentreY(),
+                                   juce::Colours::black.withAlpha(0.50f), bounds.getRight(), bounds.getBottom(), true);
+    g.setGradientFill(vignette);
+    g.fillRect(bounds);
+
+    g.setColour(juce::Colours::black.withAlpha(0.82f));
+    g.drawRect(bounds.reduced(1.0f), 2.0f);
+    g.setColour(juce::Colour(0xff3a4049).withAlpha(0.78f));
+    g.drawRect(bounds.reduced(3.0f), 1.0f);
+
+    constexpr float screwRadius = 6.0f;
+    paintHardwareScrew(g, { 11.0f, 69.0f }, screwRadius);
+    paintHardwareScrew(g, { bounds.getRight() - 11.0f, 69.0f }, screwRadius);
+    paintHardwareScrew(g, { 11.0f, bounds.getBottom() - 11.0f }, screwRadius);
+    paintHardwareScrew(g, { bounds.getRight() - 11.0f, bounds.getBottom() - 11.0f }, screwRadius);
 }
 
 void DrumVaultEditor::resized()
