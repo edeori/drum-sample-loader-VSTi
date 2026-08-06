@@ -51,9 +51,7 @@ public:
     void selectLayer(int layerIndex);
 
     // ---- Instrument management ----
-    void addInstrument(const juce::String& name, InstrumentCategory category, int midiNote,
-                        AmbienceFormat overheadFormat = AmbienceFormat::MonoPair,
-                        AmbienceFormat roomFormat = AmbienceFormat::MonoPair);
+    void addInstrumentFromType(const juce::String& name, InstrumentTypePreset type, int midiNote);
     void removeInstrument(const juce::String& instrumentId);
     void renameInstrument(const juce::String& instrumentId, const juce::String& newName);
     void toggleMute(const juce::String& instrumentId);
@@ -94,6 +92,10 @@ public:
     // ---- Mixing (per instrument, selected instrument — pure balance, no routing) ----
     void setChannelFaderDb(const juce::String& micChannelId, float db);
 
+    /** Toggles whether the selected instrument's OH_L/OH_R (or Room_L/Room_R)
+        mono fader pair move together in the Channel Mix panel. */
+    void toggleAmbienceFaderLink(MicRole role);
+
     // ---- Global Mixer: output routing lives here, not per instrument in the
     //      Kit Editor, since overhead/room mics are shared across the whole
     //      kit and routing needs to reach any instrument regardless of which
@@ -105,10 +107,13 @@ public:
     void setRoomBusRouting(const juce::String& busId);
     void toggleChannelMuteFor(const juce::String& instrumentId, const juce::String& micChannelId);
     void toggleChannelSoloFor(const juce::String& instrumentId, const juce::String& micChannelId);
+    void toggleChannelSwapFor(const juce::String& instrumentId, const juce::String& micChannelId);
     void toggleOverheadMute();
     void toggleOverheadSolo();
     void toggleRoomMute();
     void toggleRoomSolo();
+    void toggleOverheadSwap();
+    void toggleRoomSwap();
 
     // ---- Global velocity config ----
     void setVelocityLayerCount(int count);
@@ -129,7 +134,7 @@ public:
     void savePresetAs();
     void loadPresetViaDialog();
     using DrumsetExportCallback = std::function<void(DrumsetExporter::Result)>;
-    void exportDrumsetViaDialog(DrumsetExportCallback onComplete);
+    void exportDrumsetViaDialog(const juce::String& desiredExportName, DrumsetExportCallback onComplete);
     void updateDrumsetExportViaDialog(DrumsetExportCallback onComplete);
 
     DrumSampleLoaderAudioProcessor& getProcessor() { return processor; }

@@ -42,9 +42,15 @@ private:
         juce::Label panValueLabel;
         juce::ComboBox routeBox;
         juce::TextButton muteButton { "M" }, soloButton { "S" };
+        // Slot strip between mute/solo and the fader — currently just the
+        // L/R swap toggle (Overheads/Room rows only), but laid out as a
+        // reserved row so future per-channel extras have somewhere to go.
+        juce::TextButton swapButton { juce::String::charToString((juce::juce_wchar) 0x21c4) };
+        bool hasSwapControl = false;
         juce::String currentBusId; // kept in sync with routeBox for meter polling
+        uint64_t meterKey = 0;     // see DrumEngine::meterKeyFor
         bool hasPanControl = false;
-        juce::Rectangle<int> scaleBounds, meterBounds;
+        juce::Rectangle<int> scaleBounds, meterBounds, slotBounds;
     };
 
     KitEditController& controller;
@@ -52,12 +58,40 @@ private:
     static constexpr int stripWidth = 132;
 };
 
+/** The plugin's overall output level — pinned to the right edge of the
+    Global Mixer, outside the horizontally scrollable channel strips, so it
+    stays visible (and reachable) regardless of scroll position. Mirrors
+    MasterCard's volume row/MeterCard's peak reading, just surfaced where
+    the channels it's summing are. */
+class MasterStripPanel : public juce::Component, private KitEditController::Listener, private juce::Timer
+{
+public:
+    explicit MasterStripPanel(KitEditController& controllerToUse);
+    ~MasterStripPanel() override;
+
+    void paint(juce::Graphics&) override;
+    void resized() override;
+    static constexpr int preferredWidth = 132;
+
+private:
+    void kitEditorStateChanged() override { refresh(); }
+    void timerCallback() override { repaint(); } // drives the meter
+    void refresh();
+
+    KitEditController& controller;
+    juce::Label nameLabel;
+    ResettableSlider fader;
+    juce::Label valueLabel;
+    juce::Rectangle<int> scaleBounds, meterBounds;
+};
+
 /** GLOBAL MIXER: its own full view (a separate top-bar tab) built around a
     single GlobalMixerCard in a horizontally scrollable viewport — kept out
     of GLOBAL SETTINGS' longer card stack so it gets the whole window to
     itself. Scrolls sideways through channel strips rather than a vertical
     list, so it isn't affected by the vertical touchpad-scroll-vs-slider
-    conflict a taller vertical layout would have. */
+    conflict a taller vertical layout would have. The Master strip sits
+    outside the viewport, pinned to the right edge. */
 class GlobalMixerView : public juce::Component
 {
 public:
@@ -70,6 +104,7 @@ private:
     juce::Label heading, hintLabel;
     juce::Viewport viewport;
     GlobalMixerCard globalMixerCard;
+    MasterStripPanel masterStripPanel;
 };
 
 /** VELOCITY THRESHOLDS card: layer count, the coloured range strip, and the
@@ -168,6 +203,7 @@ private:
     ModalHost& modalHost;
     juce::Label titleLabel;
     juce::TextButton exportButton { "EXPORT" };
+    juce::TextButton importButton { "IMPORT" };
     juce::TextButton editButton { "EDIT MIDI MAP" };
 };
 
@@ -175,15 +211,13 @@ private:
 class SidePanel : public juce::Component
 {
 public:
-    SidePanel(KitEditController& controllerToUse, ToastOverlay& toastsToUse, ModalHost& modalHostToUse,
-              std::function<void()> onCollapse);
+    SidePanel(KitEditController& controllerToUse, ToastOverlay& toastsToUse, ModalHost& modalHostToUse);
 
     void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
     juce::Label eyebrow, tinyStatus;
-    juce::TextButton collapseButton { juce::String::charToString((juce::juce_wchar) 0x00d7) };
 
     juce::Viewport viewport;
     juce::Component content;

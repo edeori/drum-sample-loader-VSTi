@@ -162,53 +162,112 @@ Kit DefaultKitFactory::createDefaultKit()
     kit.overheadBusId = "bus:Out9";
     kit.roomBusId = "bus:Out10";
 
-    // Note numbers are the placeholder "Krimh-style" template documented in
-    // docs/05-midi-mapping.md section 5.2 — GM + common metal-production
-    // convention, not a verified official Krimh Drums export.
-    kit.instruments.push_back(makeBodyInstrument("kick", "Kick", 36,
+    // Note numbers are a best-effort transcription of an e-kit-style layout
+    // the user matched to their hardware (docs/05-midi-mapping.md section
+    // 5.2) — a single ascending run in the layout's own left-to-right
+    // grouping, not pixel-verified against the source image. Any note can be
+    // corrected per-articulation in seconds via MIDI Learn (section 5.1).
+
+    kit.instruments.push_back(makeBodyInstrument("kick", "Kick", -1,
         { { "In", "bus:Out1" }, { "Out", "bus:Out2" } }, mono, mono));
+    {
+        auto& kick = kit.instruments.back();
+        kick.articulations.front().id = "kick1";
+        kick.articulations.front().name = "Kick 1";
+        kick.articulations.front().midiNote = 26;
+        addArticulation(kick, "kick2", "Kick 2", 25);
+    }
 
-    kit.instruments.push_back(makeBodyInstrument("snare", "Snare", 38,
+    kit.instruments.push_back(makeBodyInstrument("snare", "Snare", -1,
         { { "Top", "bus:Out3" }, { "Bottom", "bus:Out4" } }, mono, mono));
+    {
+        auto& snare = kit.instruments.back();
+        snare.articulations.front().id = "hit";
+        snare.articulations.front().name = "Hit";
+        snare.articulations.front().midiNote = 27;
+        addArticulation(snare, "off_center", "Off-center", 28);
+        addArticulation(snare, "flam", "Flam", 29);
+        addArticulation(snare, "sidestick", "SideStick", 30);
+        addArticulation(snare, "no_wires", "No-wires", 31);
+    }
 
-    kit.instruments.push_back(makeBodyInstrument("tom1", "Tom 1", 50, { { "Spot", "bus:Out5" } }, mono, mono));
-    kit.instruments.push_back(makeBodyInstrument("tom2", "Tom 2", 48, { { "Spot", "bus:Out6" } }, mono, mono));
-    kit.instruments.push_back(makeBodyInstrument("tom3", "Tom 3", 45, { { "Spot", "bus:Out7" } }, mono, mono));
-    kit.instruments.push_back(makeBodyInstrument("tom4", "Tom 4", 41, { { "Spot", "bus:Out8" } }, mono, mono));
+    kit.instruments.push_back(makeBodyInstrument("tom1", "Tom 1", 32, { { "Spot", "bus:Out5" } }, mono, mono));
+    kit.instruments.push_back(makeBodyInstrument("tom2", "Tom 2", 33, { { "Spot", "bus:Out6" } }, mono, mono));
+    kit.instruments.push_back(makeBodyInstrument("tom3", "Tom 3", 34, { { "Spot", "bus:Out7" } }, mono, mono));
+    kit.instruments.push_back(makeBodyInstrument("tomfx", "Tom FX", 35, { { "Spot", "bus:Out11" } }, mono, mono));
+    kit.instruments.push_back(makeBodyInstrument("tom4", "Tom 4", 36, { { "Spot", "bus:Out8" } }, mono, mono));
 
-    // Hi-hat articulations are independent MIDI triggers and keep independent
-    // velocity layers/round-robin sample pools.
-    auto hihat = makeCymbalInstrument("hihat", "Hi-hat", 42, mono, mono);
-    hihat.articulations.front().id = "closed";
-    hihat.articulations.front().name = "Closed";
-    addArticulation(hihat, "half_open", "Half Open", 44);
-    addArticulation(hihat, "open", "Open", 46);
+    auto hihat = makeCymbalInstrument("hihat", "Hi-hat", -1, mono, mono);
+    hihat.articulations.clear();
+    addArticulation(hihat, "pedal_cc", "Pedal CC", 24);
+    addArticulation(hihat, "tip_closed", "Tip Closed", 37);
+    addArticulation(hihat, "closed", "Closed", 38);
+    addArticulation(hihat, "open1", "Open 1", 39);
+    addArticulation(hihat, "open2", "Open 2", 40);
+    addArticulation(hihat, "open3", "Open 3", 41);
+    addArticulation(hihat, "open4", "Open 4", 42);
+    addArticulation(hihat, "open5", "Open 5", 43);
+    addArticulation(hihat, "pedal", "Pedal", 44);
+    addArticulation(hihat, "pedal_open", "Pedal Open", 45);
+    addArticulation(hihat, "tip_open", "Tip Open", 46);
     kit.instruments.push_back(std::move(hihat));
 
-    auto crash1 = makeCymbalInstrument("crash1", "Crash 1", 49, mono, mono);
-    crash1.articulations.front().id = "hit";
-    crash1.articulations.front().name = "Hit";
-    addArticulation(crash1, "choke", "Choke", 61, ArticulationAction::Choke);
+    auto crash1 = makeCymbalInstrument("crash1", "Crash 1", -1, mono, mono);
+    crash1.articulations.clear();
+    addArticulation(crash1, "left_hit", "Left Hit", 47);
+    addArticulation(crash1, "right_hit", "Right Hit", 48);
+    addArticulation(crash1, "left_choke", "Left Choke", 49, ArticulationAction::Choke);
+    addArticulation(crash1, "right_choke", "Right Choke", 50, ArticulationAction::Choke);
     kit.instruments.push_back(std::move(crash1));
 
-    auto crash2 = makeCymbalInstrument("crash2", "Crash 2", 57, mono, mono);
-    crash2.articulations.front().id = "hit";
-    crash2.articulations.front().name = "Hit";
-    addArticulation(crash2, "choke", "Choke", 58, ArticulationAction::Choke);
+    auto crash2 = makeCymbalInstrument("crash2", "Crash 2", -1, mono, mono);
+    crash2.articulations.clear();
+    addArticulation(crash2, "left_hit", "Left Hit", 51);
+    addArticulation(crash2, "right_hit", "Right Hit", 52);
+    addArticulation(crash2, "left_choke", "Left Choke", 53, ArticulationAction::Choke);
+    addArticulation(crash2, "right_choke", "Right Choke", 54, ArticulationAction::Choke);
     kit.instruments.push_back(std::move(crash2));
 
-    auto ride = makeCymbalInstrument("ride", "Ride", 51, mono, mono);
-    ride.articulations.front().id = "hit";
-    ride.articulations.front().name = "Hit";
-    addArticulation(ride, "bell", "Bell", 53);
+    auto ride = makeCymbalInstrument("ride", "Ride", -1, mono, mono);
+    ride.articulations.front().id = "main";
+    ride.articulations.front().name = "Main";
+    ride.articulations.front().midiNote = 55;
+    addArticulation(ride, "bell", "Bell", 56);
+    addArticulation(ride, "crash", "Crash", 57);
     kit.instruments.push_back(std::move(ride));
 
-    auto china = makeCymbalInstrument("china", "China", 52, mono, mono);
-    china.articulations.front().id = "hit";
-    china.articulations.front().name = "Hit";
-    addArticulation(china, "choke", "Choke", 60, ArticulationAction::Choke);
+    auto china = makeCymbalInstrument("china", "China", -1, mono, mono);
+    china.articulations.clear();
+    addArticulation(china, "left_hit", "Left Hit", 58);
+    addArticulation(china, "right_hit", "Right Hit", 59);
+    addArticulation(china, "left_choke", "Left Choke", 60, ArticulationAction::Choke);
+    addArticulation(china, "right_choke", "Right Choke", 61, ArticulationAction::Choke);
     kit.instruments.push_back(std::move(china));
-    kit.instruments.push_back(makeCymbalInstrument("splash", "Splash", 55, mono, mono));
+
+    auto xhat = makeCymbalInstrument("xhat", "X-Hat", -1, mono, mono);
+    xhat.articulations.clear();
+    addArticulation(xhat, "closed", "Closed", 62);
+    addArticulation(xhat, "open1", "Open 1", 67);
+    addArticulation(xhat, "open2", "Open 2", 68);
+    addArticulation(xhat, "open3", "Open 3", 69);
+    addArticulation(xhat, "open4", "Open 4", 70);
+    addArticulation(xhat, "open5", "Open 5", 71);
+    addArticulation(xhat, "open6", "Open 6", 72);
+    kit.instruments.push_back(std::move(xhat));
+
+    auto splash1 = makeCymbalInstrument("splash1", "Splash 1", -1, mono, mono);
+    splash1.articulations.front().id = "hit";
+    splash1.articulations.front().name = "Hit";
+    splash1.articulations.front().midiNote = 63;
+    addArticulation(splash1, "choke", "Choke", 64, ArticulationAction::Choke);
+    kit.instruments.push_back(std::move(splash1));
+
+    auto splash2 = makeCymbalInstrument("splash2", "Splash 2", -1, mono, mono);
+    splash2.articulations.front().id = "hit";
+    splash2.articulations.front().name = "Hit";
+    splash2.articulations.front().midiNote = 65;
+    addArticulation(splash2, "choke", "Choke", 66, ArticulationAction::Choke);
+    kit.instruments.push_back(std::move(splash2));
 
     // Ensures every articulation's velocityLayers array matches the global
     // layer count/thresholds, all starting empty (no samples assigned yet).
@@ -230,7 +289,19 @@ void DefaultKitFactory::ensureRequiredArticulations(Kit& kit)
         const bool isRide = instrument.category == InstrumentCategory::Cymbal
                          && identity.contains("ride");
 
-        if (isHihat)
+        // The current default kit's Hi-hat/Crash/China/Ride already ship with
+        // a richer, e-kit-style articulation set (docs/05-midi-mapping.md
+        // section 5.2) that doesn't match this function's older flat
+        // closed/half_open/open or hit/choke shape. Detect that up front via
+        // an id unique to the new layout, so this legacy-upgrade logic only
+        // ever touches genuinely old presets — otherwise it would "helpfully"
+        // bolt extra, unreachable (note -1) articulations onto every kit that
+        // already has the new shape on every load/save round-trip.
+        const bool alreadyModernHihat = isHihat && instrument.findArticulation("tip_open") != nullptr;
+        const bool alreadyModernCrashOrChina = (isCrash || isChina) && instrument.findArticulation("left_hit") != nullptr;
+        const bool alreadyModernRide = isRide && instrument.findArticulation("crash") != nullptr;
+
+        if (isHihat && ! alreadyModernHihat)
         {
             auto* closed = instrument.findArticulation("closed");
             if (closed == nullptr)
@@ -283,7 +354,7 @@ void DefaultKitFactory::ensureRequiredArticulations(Kit& kit)
                              { return articulationOrder(a) < articulationOrder(b); });
         }
 
-        if (isCrash || isChina)
+        if ((isCrash || isChina) && ! alreadyModernCrashOrChina)
         {
             auto* hit = instrument.findArticulation("hit");
             if (hit == nullptr)
@@ -348,7 +419,7 @@ void DefaultKitFactory::ensureRequiredArticulations(Kit& kit)
                              { return articulationOrder(a) < articulationOrder(b); });
         }
 
-        if (isRide)
+        if (isRide && ! alreadyModernRide)
         {
             auto* hit = instrument.findArticulation("hit");
             if (hit == nullptr)
@@ -418,6 +489,51 @@ Instrument DefaultKitFactory::createBlankInstrument(juce::String id, juce::Strin
 
     return makeBodyInstrument(std::move(id), std::move(name), midiNote,
                               { { "Spot", "bus:Master" } }, overheadFormat, roomFormat);
+}
+
+juce::String DefaultKitFactory::displayNameForTypePreset(InstrumentTypePreset type)
+{
+    switch (type)
+    {
+        case InstrumentTypePreset::Kick:  return "Kick";
+        case InstrumentTypePreset::Snare: return "Snare";
+        case InstrumentTypePreset::Tom:   return "Tom";
+        case InstrumentTypePreset::HiHat: return "Hi-Hat";
+        case InstrumentTypePreset::Crash: return "Crash";
+        case InstrumentTypePreset::Ride:  return "Ride";
+        case InstrumentTypePreset::China: return "China";
+        case InstrumentTypePreset::Splash: return "Splash";
+        case InstrumentTypePreset::Effect: default: return "Effect";
+    }
+}
+
+Instrument DefaultKitFactory::createInstrumentFromTypePreset(juce::String id, juce::String name,
+                                                               InstrumentTypePreset type, int midiNote,
+                                                               AmbienceFormat overheadFormat,
+                                                               AmbienceFormat roomFormat)
+{
+    switch (type)
+    {
+        case InstrumentTypePreset::Kick:
+            return makeBodyInstrument(std::move(id), std::move(name), midiNote,
+                                      { { "In", "bus:Master" }, { "Out", "bus:Master" } },
+                                      overheadFormat, roomFormat);
+        case InstrumentTypePreset::Snare:
+            return makeBodyInstrument(std::move(id), std::move(name), midiNote,
+                                      { { "Top", "bus:Master" }, { "Bottom", "bus:Master" } },
+                                      overheadFormat, roomFormat);
+        case InstrumentTypePreset::Tom:
+            return makeBodyInstrument(std::move(id), std::move(name), midiNote,
+                                      { { "Spot", "bus:Master" } }, overheadFormat, roomFormat);
+        case InstrumentTypePreset::HiHat:
+        case InstrumentTypePreset::Crash:
+        case InstrumentTypePreset::Ride:
+        case InstrumentTypePreset::China:
+        case InstrumentTypePreset::Splash:
+        case InstrumentTypePreset::Effect:
+        default:
+            return makeCymbalInstrument(std::move(id), std::move(name), midiNote, overheadFormat, roomFormat);
+    }
 }
 
 bool DefaultKitFactory::reconfigureAmbienceChannels(Instrument& instrument, MicRole role, AmbienceFormat format)

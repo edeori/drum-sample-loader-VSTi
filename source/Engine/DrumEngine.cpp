@@ -55,14 +55,18 @@ void DrumEngine::processBlock(const juce::MidiBuffer& midiMessages,
             continue; // learn-mode note-ons are captured, not played
         }
 
-        triggerNoteOn(*kitSnapshot, message.getNoteNumber(), (int) message.getVelocity());
+        triggerNoteOn(*kitSnapshot, message.getNoteNumber(), (int) message.getVelocity(), busBuffers);
     }
 
     voicePool.renderNextBlock(busBuffers, numSamples);
 
-    const int masterBusIndex = kitSnapshot->busRouting.indexOfBus("bus:Master");
-    if (masterBusIndex >= 0 && masterBusIndex < (int) busBuffers.size() && busBuffers[(size_t) masterBusIndex] != nullptr)
-        busBuffers[(size_t) masterBusIndex]->applyGain(juce::Decibels::decibelsToGain(kitSnapshot->masterDb));
+    // Master is a true final trim over everything, not just whatever's
+    // routed to bus:Master — every populated bus gets it, on top of its own
+    // per-channel/per-bus routing (docs/04-mixing-routing.md section 4.4).
+    const float masterGain = juce::Decibels::decibelsToGain(kitSnapshot->masterDb);
+    for (auto* buf : busBuffers)
+        if (buf != nullptr && buf->getNumChannels() > 0)
+            buf->applyGain(masterGain);
 }
 
 void DrumEngine::beginMidiLearn(const juce::String& instrumentId, const juce::String& articulationId)
@@ -87,7 +91,18 @@ std::optional<DrumEngine::MidiLearnResult> DrumEngine::consumeMidiLearnResult()
     return result;
 }
 
-void DrumEngine::triggerNoteOn(Kit& kitRef, int midiNote, int velocity)
+uint64_t DrumEngine::meterKeyFor(const juce::String& instrumentId, const MicChannelDef& micDef)
+{
+    if (isOverheadRole(micDef.role))
+        return (uint64_t) juce::String("__pooled_OH__").hashCode64();
+    if (isRoomRole(micDef.role))
+        return (uint64_t) juce::String("__pooled_Room__").hashCode64();
+
+    return (uint64_t) (instrumentId + ":" + micDef.id).hashCode64();
+}
+
+void DrumEngine::triggerNoteOn(Kit& kitRef, int midiNote, int velocity,
+                               const std::vector<juce::AudioBuffer<float>*>& busBuffers)
 {
     auto target = kitRef.targetForMidiNote(midiNote);
     auto* instrument = target.instrument;
@@ -173,18 +188,26 @@ void DrumEngine::triggerNoteOn(Kit& kitRef, int midiNote, int velocity)
         bool channelSoloed = instrument->isChannelSoloed(channelId);
 
         float pan = 0.0f;
+        bool swapStereo = false;
         if (micDef != nullptr)
         {
             pan = micDef->pan;
             // Overhead/Room mics capture the whole kit, so their output
-            // destination — and their Global Mixer mute/solo state — is one
-            // kit-wide choice, not per instrument.
+            // destination — and their Global Mixer mute/solo/swap state —
+            // is one kit-wide choice, not per instrument.
             if (isOverheadRole(micDef->role))
             {
                 gainLinear *= juce::Decibels::decibelsToGain(kitRef.masterOverheadDb);
                 busId = kitRef.overheadBusId;
                 channelMuted = kitRef.overheadMuted;
                 channelSoloed = kitRef.overheadSolo;
+                if (kitRef.overheadSwapLR)
+                {
+                    if (micDef->numChannels == 1)
+                        pan = -pan;
+                    else
+                        swapStereo = true;
+                }
             }
             else if (isRoomRole(micDef->role))
             {
@@ -192,18 +215,46 @@ void DrumEngine::triggerNoteOn(Kit& kitRef, int midiNote, int velocity)
                 busId = kitRef.roomBusId;
                 channelMuted = kitRef.roomMuted;
                 channelSoloed = kitRef.roomSolo;
+                if (kitRef.roomSwapLR)
+                {
+                    if (micDef->numChannels == 1)
+                        pan = -pan;
+                    else
+                        swapStereo = true;
+                }
+            }
+            else if (instrument->isChannelSwapped(channelId))
+            {
+                // Spot channels are always declared mono in the kit (no
+                // per-instrument "this Spot is stereo" setting exists), but
+                // nothing stops a genuinely stereo file from being loaded
+                // into one — so the swap decision is made from what's
+                // actually loaded for this hit, not the channel's static
+                // declaration.
+                if (sampleRef.buffer->getNumChannels() == 1)
+                    pan = -pan;
+                else
+                    swapStereo = true;
             }
         }
 
         if (channelMuted || (anySoloedChannel && ! channelSoloed))
             continue;
 
+        // Falls back to Master both when the routing table doesn't know the
+        // bus id, and when it does but the host/standalone this session
+        // doesn't actually expose that many real output channels (e.g. a
+        // plain 2-channel Standalone device only ever gives bus 0 real
+        // channels) — docs/04-mixing-routing.md section 4.2's documented
+        // "falls back to the internal stereo mix" behavior.
         int busIndex = busId.isNotEmpty() ? kitRef.busRouting.indexOfBus(busId) : -1;
-        if (busIndex < 0)
+        const bool resolvedBusUsable = busIndex >= 0 && busIndex < (int) busBuffers.size()
+            && busBuffers[(size_t) busIndex] != nullptr && busBuffers[(size_t) busIndex]->getNumChannels() > 0;
+        if (! resolvedBusUsable)
             busIndex = fallbackMasterBus;
 
         voicePool.startVoice(sampleRef.buffer, sampleRef.sourceSampleRate, gainLinear, busIndex,
-                             pitchRatio, pan, voiceGroup);
+                             pitchRatio, pan, voiceGroup, meterKeyFor(instrument->id, *micDef), swapStereo);
     }
 }
 

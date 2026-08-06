@@ -136,6 +136,8 @@ juce::var Preset::toVar(const Kit& kit)
         routingObj->setProperty("overheadSolo", kit.overheadSolo);
         routingObj->setProperty("roomMuted", kit.roomMuted);
         routingObj->setProperty("roomSolo", kit.roomSolo);
+        routingObj->setProperty("overheadSwapLR", kit.overheadSwapLR);
+        routingObj->setProperty("roomSwapLR", kit.roomSwapLR);
         root->setProperty("globalRouting", juce::var(routingObj.release()));
     }
 
@@ -148,6 +150,8 @@ juce::var Preset::toVar(const Kit& kit)
         instObj->setProperty("category", categoryToString(inst.category));
         instObj->setProperty("muted", inst.muted);
         instObj->setProperty("solo", inst.solo);
+        instObj->setProperty("ohFaderLinked", inst.ohFaderLinked);
+        instObj->setProperty("roomFaderLinked", inst.roomFaderLinked);
 
         juce::Array<juce::var> articulationsArr;
         for (auto& articulation : inst.articulations)
@@ -195,6 +199,11 @@ juce::var Preset::toVar(const Kit& kit)
             channelSoloObj->setProperty(chId, s);
         instObj->setProperty("channelSolo", juce::var(channelSoloObj.release()));
 
+        auto channelSwapObj = std::make_unique<juce::DynamicObject>();
+        for (auto& [chId, sw] : inst.channelSwapLR)
+            channelSwapObj->setProperty(chId, sw);
+        instObj->setProperty("channelSwapLR", juce::var(channelSwapObj.release()));
+
         instrumentsArr.add(juce::var(instObj.release()));
     }
     root->setProperty("instruments", instrumentsArr);
@@ -241,6 +250,8 @@ Kit Preset::fromVar(const juce::var& json)
         kit.overheadSolo = (bool) routingObj->getProperty("overheadSolo");
         kit.roomMuted = (bool) routingObj->getProperty("roomMuted");
         kit.roomSolo = (bool) routingObj->getProperty("roomSolo");
+        kit.overheadSwapLR = (bool) routingObj->getProperty("overheadSwapLR");
+        kit.roomSwapLR = (bool) routingObj->getProperty("roomSwapLR");
     }
 
     if (auto* instrumentsArr = json.getProperty("instruments", {}).getArray())
@@ -253,6 +264,8 @@ Kit Preset::fromVar(const juce::var& json)
             inst.category = categoryFromString(instVar.getProperty("category", "Body").toString());
             inst.muted = (bool) instVar.getProperty("muted", false);
             inst.solo = (bool) instVar.getProperty("solo", false);
+            inst.ohFaderLinked = (bool) instVar.getProperty("ohFaderLinked", true);
+            inst.roomFaderLinked = (bool) instVar.getProperty("roomFaderLinked", true);
 
             if (auto* articulationsArr = instVar.getProperty("articulations", {}).getArray())
             {
@@ -317,6 +330,10 @@ Kit Preset::fromVar(const juce::var& json)
             if (auto* channelSoloObj = instVar.getProperty("channelSolo", {}).getDynamicObject())
                 for (auto& prop : channelSoloObj->getProperties())
                     inst.channelSolo[prop.name.toString()] = (bool) prop.value;
+
+            if (auto* channelSwapObj = instVar.getProperty("channelSwapLR", {}).getDynamicObject())
+                for (auto& prop : channelSwapObj->getProperties())
+                    inst.channelSwapLR[prop.name.toString()] = (bool) prop.value;
 
             if (addedSpotChannel && inst.channelFaderDb.find("Spot") == inst.channelFaderDb.end())
                 inst.channelFaderDb["Spot"] = 0.0f;

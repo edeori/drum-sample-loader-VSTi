@@ -50,8 +50,8 @@ public:
 
             auto* loadedHihat = loaded.findInstrumentById("hihat");
             expect(loadedHihat != nullptr);
-            expectEquals((int) loadedHihat->articulations.size(), 3);
-            expectEquals(loadedHihat->findArticulation("half_open")->midiNote, 44);
+            expectEquals((int) loadedHihat->articulations.size(), 11);
+            expectEquals(loadedHihat->findArticulation("closed")->midiNote, 38);
             expectWithinAbsoluteError(loadedHihat->findChannel("OH_L")->pan, -1.0f, 0.0001f);
             expectWithinAbsoluteError(loadedHihat->findChannel("OH_R")->pan, 1.0f, 0.0001f);
         }

@@ -75,6 +75,11 @@ juce::String DrumsetExporter::suggestedDirectoryName(const juce::String& kitName
     return safePathComponent(kitName, "Untitled_Kit") + "_Swarm_Drumset";
 }
 
+juce::String DrumsetExporter::sanitizeExportName(const juce::String& desiredName)
+{
+    return safePathComponent(desiredName, "Untitled_Kit");
+}
+
 DrumsetExporter::Result DrumsetExporter::exportKit(
     const Kit& kit,
     const juce::File& packageDirectory,

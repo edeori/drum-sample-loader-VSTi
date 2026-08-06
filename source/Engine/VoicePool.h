@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -20,6 +21,8 @@ struct Voice
     float pan = 0.0f;
     int busIndex = -1;
     uint64_t voiceGroup = 0;
+    uint64_t meterKey = 0;
+    bool swapStereo = false;
     float chokeGain = 1.0f;
     float chokeStepPerSample = 0.0f;
     bool active = false;
@@ -42,7 +45,8 @@ public:
     void startVoice(std::shared_ptr<const juce::AudioBuffer<float>> buffer,
                      double sourceSampleRate, float gainLinear, int busIndex,
                      double extraPitchRatio = 1.0, float pan = 0.0f,
-                     uint64_t voiceGroup = 0);
+                     uint64_t voiceGroup = 0, uint64_t meterKey = 0,
+                     bool swapStereo = false);
 
     /** Applies a short click-free release to every active voice belonging to
         one instrument. Used by explicit Crash Choke articulations. */
@@ -59,12 +63,26 @@ public:
 
     int getNumActiveVoices() const;
 
+    /** Post-fader, pre-bus-mix decayed peak for one originating mic channel,
+        keyed by the same meterKey passed to startVoice() (see
+        DrumEngine::meterKeyFor) — lets the Global Mixer show each channel's
+        own hits instead of whatever else shares its output bus. Bucketed by
+        hash, so two channels can in theory share a bucket; harmless for a
+        VU meter (never affects actual audio routing/mixing). */
+    float getChannelPeak(uint64_t meterKey) const
+    {
+        return channelPeaks[meterKey % channelPeaks.size()].load(std::memory_order_relaxed);
+    }
+
 private:
     Voice* findFreeOrStealVoice();
 
     std::vector<Voice> voices;
     double engineSampleRate = 44100.0;
     uint64_t voiceCounter = 0;
+
+    static constexpr size_t numMeterBuckets = 1024;
+    std::vector<std::atomic<float>> channelPeaks;
 };
 
 } // namespace dsl

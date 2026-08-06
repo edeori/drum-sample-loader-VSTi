@@ -81,8 +81,20 @@ public:
         return midiNote >= 0 && midiNote < 128 ? lastHitTimeMs[(size_t) midiNote].load(std::memory_order_relaxed) : 0;
     }
 
+    /** Post-fader, pre-bus-mix peak for one mic channel — see
+        VoicePool::getChannelPeak. Polled by the Global Mixer so each strip's
+        meter reflects only its own hits, not whatever else shares its bus. */
+    float getChannelPeak(uint64_t meterKey) const { return voicePool.getChannelPeak(meterKey); }
+
+    /** Stable meter key for one mic channel, shared between the audio thread
+        (tagging voices in triggerNoteOn) and the UI (polling getChannelPeak).
+        Overhead/Room mic channels pool to one kit-wide key each, matching
+        the Global Mixer's single pooled Overheads/Room row. */
+    static uint64_t meterKeyFor(const juce::String& instrumentId, const MicChannelDef& micDef);
+
 private:
-    void triggerNoteOn(Kit& kitRef, int midiNote, int velocity);
+    void triggerNoteOn(Kit& kitRef, int midiNote, int velocity,
+                       const std::vector<juce::AudioBuffer<float>*>& busBuffers);
 
     mutable std::mutex kitMutex;
     std::shared_ptr<Kit> kit;

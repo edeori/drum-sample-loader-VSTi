@@ -27,6 +27,14 @@ namespace Colours
 // mockup/styles.css .panel / .side-card. Used by every top-level section.
 void paintPanelBackground(juce::Graphics& g, juce::Rectangle<float> bounds, float cornerRadius = 5.0f);
 
+/** Makes a fader's existing "X.X dB" value label double-click editable:
+    typing a number and pressing Enter (or clicking away) drives the slider
+    to that value, clamped to its range. Reuses the slider's own
+    onValueChange (already wired at every call site to reformat the label
+    and push the change through the controller) rather than duplicating that
+    commit path — this only re-drives the slider. */
+void makeDbLabelEditable(juce::Label& label, juce::Slider& slider);
+
 /** Slider used for audio gain controls. Double-click or Cmd/Ctrl-click resets
     it to 0 dB without beginning a drag. Non-fader sliders can disable this. */
 class ResettableSlider : public juce::Slider

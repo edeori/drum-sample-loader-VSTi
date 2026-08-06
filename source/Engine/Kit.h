@@ -42,6 +42,13 @@ public:
     bool roomMuted = false;
     bool roomSolo = false;
 
+    // Global Mixer L/R swap for the pooled Overheads/Room rows (mainly useful
+    // for stereo-ish mic setups). Applied at trigger time in
+    // DrumEngine::triggerNoteOn — never mutates the stored per-channel pan,
+    // so toggling it off restores the original image exactly.
+    bool overheadSwapLR = false;
+    bool roomSwapLR = false;
+
     bool hasAnySoloedInstrument() const
     {
         for (auto& instrument : instruments)

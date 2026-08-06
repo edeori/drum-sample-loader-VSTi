@@ -12,11 +12,7 @@ DrumVaultEditor::DrumVaultEditor(DrumSampleLoaderAudioProcessor& processorToUse)
       mixerPanel(controller),
       kitStageView(controller),
       globalMixerView(controller),
-      sidePanel(controller, toastOverlay, modalHost, [this]
-                {
-                    currentView = ViewMode::KitEditor;
-                    resized();
-                })
+      sidePanel(controller, toastOverlay, modalHost)
 {
     setLookAndFeel(&lookAndFeel);
 

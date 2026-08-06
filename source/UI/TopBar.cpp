@@ -1,5 +1,9 @@
 #include "TopBar.h"
 
+#if JucePlugin_Build_Standalone
+#include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
+#endif
+
 namespace dsl::ui
 {
 
@@ -10,9 +14,7 @@ TopBar::TopBar(KitEditController& controllerToUse, ToastOverlay& toastsToUse, Mo
 {
     brandButton.onClick = [this]
     {
-        modalHost.show(std::make_unique<InfoDialog>(modalHost, "SWARM", "Built for real drum performances",
-            "A multi-channel drum sample instrument with velocity layers, non-repeating round robins, "
-            "flexible per-channel routing and a let-it-ring playback model."), 460, 230);
+        modalHost.show(std::make_unique<ManualDialog>(modalHost), ManualDialog::width, ManualDialog::height);
     };
     addAndMakeVisible(brandButton);
 
@@ -91,6 +93,21 @@ TopBar::TopBar(KitEditController& controllerToUse, ToastOverlay& toastsToUse, Mo
     drumsetButton.setTooltip("Export or update a portable drumset with all samples");
     addAndMakeVisible(drumsetButton);
 
+#if JucePlugin_Build_Standalone
+    // getInstance() is only non-null when this is actually the running
+    // Standalone app (VST3/AU builds share the same compiled object code,
+    // so this can't be decided at compile time).
+    if (juce::StandalonePluginHolder::getInstance() != nullptr)
+    {
+        audioMidiButton.onClick = []
+        {
+            if (auto* holder = juce::StandalonePluginHolder::getInstance())
+                holder->showAudioSettingsDialog();
+        };
+        audioMidiButton.setTooltip("Choose the audio device and which MIDI inputs (e.g. an electronic drum kit) play this kit");
+        addAndMakeVisible(audioMidiButton);
+    }
+#endif
 }
 
 void TopBar::showDrumsetMenu()
@@ -107,8 +124,6 @@ void TopBar::showDrumsetMenu()
                 return;
 
             const bool update = result == 2;
-            safeThis->toasts.show(update ? "Updating drumset export..." : "Exporting drumset...",
-                                  "Samples are copied in the background");
 
             auto completion = [safeThis, update](DrumsetExporter::Result exportResult) mutable
             {
@@ -117,9 +132,22 @@ void TopBar::showDrumsetMenu()
             };
 
             if (update)
+            {
+                safeThis->toasts.show("Updating drumset export...", "Samples are copied in the background");
                 safeThis->controller.updateDrumsetExportViaDialog(std::move(completion));
-            else
-                safeThis->controller.exportDrumsetViaDialog(std::move(completion));
+                return;
+            }
+
+            const auto initialName = DrumsetExporter::suggestedDirectoryName(safeThis->controller.getWorkingKit().kitName);
+            safeThis->modalHost.show(std::make_unique<ExportDrumsetNameDialog>(safeThis->modalHost, initialName,
+                [safeThis, completion](juce::String chosenName) mutable
+                {
+                    if (safeThis == nullptr)
+                        return;
+
+                    safeThis->toasts.show("Exporting drumset...", "Samples are copied in the background");
+                    safeThis->controller.exportDrumsetViaDialog(chosenName, std::move(completion));
+                }), 420, 170);
         });
 }
 
@@ -127,7 +155,7 @@ void TopBar::handleDrumsetExportResult(DrumsetExporter::Result result, bool wasU
 {
     if (result.success)
     {
-        const auto detail = juce::String(result.sampleReferences) + " sample reference(s) · "
+        const auto detail = juce::String(result.sampleReferences) + " sample reference(s) - "
             + result.packageDirectory.getFileName();
         toasts.show(wasUpdate ? "Drumset export updated" : "Drumset exported", detail);
         return;
@@ -171,6 +199,14 @@ void TopBar::resized()
     kitTab.setBounds(area.removeFromLeft(118));
     mixerTab.setBounds(area.removeFromLeft(138));
     globalTab.setBounds(area.removeFromLeft(138));
+
+#if JucePlugin_Build_Standalone
+    if (audioMidiButton.isVisible())
+    {
+        audioMidiButton.setBounds(area.removeFromRight(96));
+        area.removeFromRight(6);
+    }
+#endif
 
     auto right = area.removeFromRight(276);
     saveButton.setBounds(right.removeFromRight(56));

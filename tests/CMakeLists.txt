@@ -8,6 +8,7 @@ add_executable(EngineTests
     SampleImportMatcherTests.cpp
     SamplePathRelinkerTests.cpp
     VoicePoolTests.cpp
+    DrumEngineTests.cpp
 )
 
 target_include_directories(EngineTests PRIVATE ${CMAKE_SOURCE_DIR}/source)

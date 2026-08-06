@@ -43,10 +43,13 @@ void GlobalMixerCard::rebuildRows()
                        bool muted, bool soloed, std::optional<float> panValue,
                        std::function<void(float)> onFader, std::function<void(juce::String)> onRoute,
                        std::function<void()> onToggleMute, std::function<void()> onToggleSolo,
-                       std::function<void(float)> onPan)
+                       std::function<void(float)> onPan, uint64_t meterKey,
+                       std::optional<bool> swapState = std::nullopt,
+                       std::function<void()> onToggleSwap = nullptr)
     {
         auto* row = rows.add(new Row());
         row->currentBusId = currentRoutingBusId;
+        row->meterKey = meterKey;
 
         row->nameLabel.setText(label, juce::dontSendNotification);
         row->nameLabel.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
@@ -65,6 +68,7 @@ void GlobalMixerCard::rebuildRows()
         row->valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffc8d0d6));
         row->valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
         row->valueLabel.setText(juce::String(faderValue, 1) + " dB", juce::dontSendNotification);
+        makeDbLabelEditable(row->valueLabel, row->fader);
         addAndMakeVisible(row->valueLabel);
 
         auto* rowPtr = row;
@@ -132,6 +136,23 @@ void GlobalMixerCard::rebuildRows()
         row->soloButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffd0aa3e));
         row->soloButton.onClick = std::move(onToggleSolo);
         addAndMakeVisible(row->soloButton);
+
+        row->hasSwapControl = swapState.has_value();
+        if (row->hasSwapControl)
+        {
+            // A persistent toggle everywhere: kit-wide for the pooled
+            // Overheads/Room rows (Kit::overheadSwapLR/roomSwapLR), per
+            // mic-channel for per-instrument Spot rows (Instrument::
+            // channelSwapLR). DrumEngine::triggerNoteOn decides at hit time
+            // whether that means mirroring pan (mono content) or swapping
+            // the two channels outright (genuinely stereo content).
+            row->swapButton.setTooltip("Swap L/R");
+            row->swapButton.setClickingTogglesState(true);
+            row->swapButton.setToggleState(*swapState, juce::dontSendNotification);
+            row->swapButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff4f82ba));
+            row->swapButton.onClick = std::move(onToggleSwap);
+            addAndMakeVisible(row->swapButton);
+        }
     };
 
     for (auto& inst : kit.instruments)
@@ -152,7 +173,10 @@ void GlobalMixerCard::rebuildRows()
                    [this, instrumentId, channelId](juce::String busId) { controller.setChannelRoutingFor(instrumentId, channelId, busId); },
                    [this, instrumentId, channelId] { controller.toggleChannelMuteFor(instrumentId, channelId); },
                    [this, instrumentId, channelId] { controller.toggleChannelSoloFor(instrumentId, channelId); },
-                   [this, instrumentId, channelId](float pan) { controller.setChannelPanFor(instrumentId, channelId, pan); });
+                   [this, instrumentId, channelId](float pan) { controller.setChannelPanFor(instrumentId, channelId, pan); },
+                   DrumEngine::meterKeyFor(instrumentId, mic),
+                   inst.isChannelSwapped(channelId),
+                   [this, instrumentId, channelId] { controller.toggleChannelSwapFor(instrumentId, channelId); });
         }
     }
 
@@ -161,14 +185,20 @@ void GlobalMixerCard::rebuildRows()
            [this](juce::String busId) { controller.setOverheadBusRouting(busId); },
            [this] { controller.toggleOverheadMute(); },
            [this] { controller.toggleOverheadSolo(); },
-           [](float) {});
+           [](float) {},
+           DrumEngine::meterKeyFor({}, MicChannelDef { {}, {}, MicRole::Overhead, 1, 0.0f }),
+           kit.overheadSwapLR,
+           [this] { controller.toggleOverheadSwap(); });
 
     addRow("Room", kit.masterRoomDb, kit.roomBusId, kit.roomMuted, kit.roomSolo, std::nullopt,
            [this](float v) { controller.setMasterRoomDb(v); },
            [this](juce::String busId) { controller.setRoomBusRouting(busId); },
            [this] { controller.toggleRoomMute(); },
            [this] { controller.toggleRoomSolo(); },
-           [](float) {});
+           [](float) {},
+           DrumEngine::meterKeyFor({}, MicChannelDef { {}, {}, MicRole::Room, 1, 0.0f }),
+           kit.roomSwapLR,
+           [this] { controller.toggleRoomSwap(); });
 
     resized();
     repaint();
@@ -212,9 +242,9 @@ void GlobalMixerCard::paint(juce::Graphics& g)
             g.drawText(label, textArea, juce::Justification::centredRight);
         }
 
-        // Output meter: post-fader peak of this row's currently routed bus.
-        const int busIndex = controller.getWorkingKit().busRouting.indexOfBus(row->currentBusId);
-        const float peakLinear = busIndex >= 0 ? controller.getProcessor().getBusPeak(busIndex) : 0.0f;
+        // Output meter: post-fader peak of THIS channel's own hits, not the
+        // bus it happens to be routed to (multiple channels can share a bus).
+        const float peakLinear = controller.getProcessor().getChannelPeak(row->meterKey);
         const float peakDb = peakLinear <= 0.00001f ? minDb : juce::Decibels::gainToDecibels(peakLinear);
 
         g.setColour(juce::Colour(0xff10161a));
@@ -248,6 +278,14 @@ void GlobalMixerCard::resized()
         row->soloButton.setBounds(msRow);
         strip.removeFromTop(6);
 
+        // Reserved slot strip — currently just the L/R swap toggle on the
+        // pooled Overheads/Room rows, left empty (but laid out) elsewhere so
+        // future per-channel extras land in the same place on every strip.
+        row->slotBounds = strip.removeFromTop(20);
+        strip.removeFromTop(6);
+        if (row->hasSwapControl)
+            row->swapButton.setBounds(row->slotBounds.withSizeKeepingCentre(28, 20));
+
         row->routeBox.setBounds(strip.removeFromBottom(24));
         strip.removeFromBottom(6);
         if (row->hasPanControl)
@@ -275,10 +313,125 @@ int GlobalMixerCard::getPreferredWidth() const
     return rows.size() * stripWidth;
 }
 
+// ----------------------------------------------------------- MasterStripPanel
+
+MasterStripPanel::MasterStripPanel(KitEditController& controllerToUse)
+    : controller(controllerToUse)
+{
+    controller.addListener(this);
+    refresh();
+    startTimerHz(30);
+}
+
+MasterStripPanel::~MasterStripPanel()
+{
+    controller.removeListener(this);
+}
+
+void MasterStripPanel::refresh()
+{
+    auto& kit = controller.getWorkingKit();
+
+    nameLabel.setText("Master", juce::dontSendNotification);
+    nameLabel.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
+    nameLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(nameLabel);
+
+    fader.setSliderStyle(juce::Slider::LinearVertical);
+    fader.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    fader.setRange(-60.0, 6.0, 0.1);
+    fader.setValue(kit.masterDb, juce::dontSendNotification);
+    fader.setScrollWheelEnabled(false);
+    fader.onValueChange = [this]
+    {
+        const float v = (float) fader.getValue();
+        valueLabel.setText(juce::String(v, 1) + " dB", juce::dontSendNotification);
+        controller.setMasterVolumeDb(v);
+    };
+    addAndMakeVisible(fader);
+
+    valueLabel.setJustificationType(juce::Justification::centred);
+    valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffc8d0d6));
+    valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
+    valueLabel.setText(juce::String(kit.masterDb, 1) + " dB", juce::dontSendNotification);
+    makeDbLabelEditable(valueLabel, fader);
+    addAndMakeVisible(valueLabel);
+
+    resized();
+}
+
+void MasterStripPanel::paint(juce::Graphics& g)
+{
+    paintPanelBackground(g, getLocalBounds().toFloat(), 4.0f);
+
+    constexpr float minDb = -60.0f, maxDb = 6.0f;
+    auto yForDb = [](float db, juce::Rectangle<int> faderBounds)
+    {
+        const float frac = juce::jlimit(0.0f, 1.0f, (db - minDb) / (maxDb - minDb));
+        return (float) faderBounds.getBottom() - frac * (float) faderBounds.getHeight();
+    };
+
+    const auto faderBounds = fader.getBounds();
+
+    g.setFont(DrumVaultLookAndFeel::bodyFont(7.0f));
+    constexpr float tickLen = 5.0f;
+    for (float db : { 6.0f, 0.0f, -3.0f, -6.0f, -12.0f, -24.0f, -40.0f, -60.0f })
+    {
+        const float y = yForDb(db, faderBounds);
+        const bool major = db == 0.0f;
+
+        g.setColour(major ? juce::Colour(0xff8a97a1) : juce::Colour(0xff45525b));
+        g.drawHorizontalLine((int) y, (float) scaleBounds.getRight() - tickLen, (float) scaleBounds.getRight());
+
+        g.setColour(major ? juce::Colour(0xffaeb8bf) : juce::Colour(0xff69757d));
+        const juce::String label = db > 0.0f ? "+" + juce::String((int) db) : juce::String((int) db);
+        const juce::Rectangle<float> textArea((float) scaleBounds.getX(), y - 5.0f,
+                                                (float) scaleBounds.getWidth() - tickLen - 3.0f, 10.0f);
+        g.drawText(label, textArea, juce::Justification::centredRight);
+    }
+
+    // Post-master-fader output peak, same reading MeterCard shows.
+    const float peakLinear = juce::jmax(controller.getProcessor().getMasterPeakL(),
+                                         controller.getProcessor().getMasterPeakR());
+    const float peakDb = peakLinear <= 0.00001f ? minDb : juce::Decibels::gainToDecibels(peakLinear);
+
+    g.setColour(juce::Colour(0xff10161a));
+    g.fillRoundedRectangle(meterBounds.toFloat(), 2.0f);
+
+    const float meterTopY = yForDb(juce::jlimit(minDb, maxDb, peakDb), meterBounds);
+    const juce::Rectangle<float> filled(meterBounds.getX(), meterTopY,
+                                         (float) meterBounds.getWidth(),
+                                         (float) meterBounds.getBottom() - meterTopY);
+    g.setGradientFill(juce::ColourGradient(Colours::green, 0.0f, (float) meterBounds.getBottom(),
+                                            Colours::red, 0.0f, (float) meterBounds.getY(), false));
+    g.fillRoundedRectangle(filled, 2.0f);
+}
+
+void MasterStripPanel::resized()
+{
+    auto strip = getLocalBounds().reduced(10, 12);
+
+    nameLabel.setBounds(strip.removeFromTop(28));
+    strip.removeFromTop(4 + 20 + 6 + 20 + 6); // mute/solo row + slot row, kept blank to match a Row's geometry
+
+    // Blank space matching a Row's route box, so the fader zone below lines
+    // up vertically with every channel strip's.
+    strip.removeFromBottom(24 + 6);
+
+    valueLabel.setBounds(strip.removeFromBottom(16));
+    strip.removeFromBottom(6);
+
+    scaleBounds = strip.removeFromLeft(24);
+    strip.removeFromLeft(4);
+    meterBounds = strip.removeFromRight(7);
+    strip.removeFromRight(4);
+    fader.setBounds(strip);
+}
+
 // -------------------------------------------------------------- GlobalMixerView
 
 GlobalMixerView::GlobalMixerView(KitEditController& controllerToUse)
-    : globalMixerCard(controllerToUse)
+    : globalMixerCard(controllerToUse), masterStripPanel(controllerToUse)
 {
     heading.setText("GLOBAL MIXER", juce::dontSendNotification);
     heading.setFont(DrumVaultLookAndFeel::displayFont(16.0f));
@@ -293,6 +446,10 @@ GlobalMixerView::GlobalMixerView(KitEditController& controllerToUse)
     viewport.setViewedComponent(&globalMixerCard, false);
     viewport.setScrollBarsShown(false, true);
     addAndMakeVisible(viewport);
+
+    // Pinned outside the scrollable viewport so it's always reachable,
+    // regardless of horizontal scroll position.
+    addAndMakeVisible(masterStripPanel);
 }
 
 void GlobalMixerView::paint(juce::Graphics&) {}
@@ -304,7 +461,11 @@ void GlobalMixerView::resized()
     heading.setBounds(headRow.removeFromLeft(200));
     hintLabel.setBounds(headRow);
 
-    viewport.setBounds(area.reduced(14, 8));
+    auto contentArea = area.reduced(14, 8);
+    masterStripPanel.setBounds(contentArea.removeFromRight(MasterStripPanel::preferredWidth));
+    contentArea.removeFromRight(10);
+
+    viewport.setBounds(contentArea);
     const int h = juce::jmax(100, viewport.getHeight() - viewport.getScrollBarThickness());
     const int w = juce::jmax(viewport.getWidth(), globalMixerCard.getPreferredWidth());
     globalMixerCard.setBounds(0, 0, w, h);
@@ -555,6 +716,8 @@ void MasterCard::setupRow(Row& row, const juce::String& name, double lo, double 
     row.value.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
     const int decimals = unit == "st" ? 0 : 1;
     row.value.setText(juce::String(initial, decimals) + " " + unit, juce::dontSendNotification);
+    if (unit == "dB")
+        makeDbLabelEditable(row.value, row.slider);
     addAndMakeVisible(row.value);
 
     row.slider.onValueChange = [&row, onChange, decimals, unit]
@@ -700,6 +863,47 @@ MidiMapCard::MidiMapCard(KitEditController& controllerToUse, ToastOverlay& toast
     };
     addAndMakeVisible(exportButton);
 
+    importButton.onClick = [this]
+    {
+        auto chooser = std::make_shared<juce::FileChooser>("Import MIDI map", juce::File(), "*.json");
+        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+            [this, chooser](const juce::FileChooser& fc)
+            {
+                auto file = fc.getResult();
+                if (! file.existsAsFile())
+                    return;
+
+                auto* rows = juce::JSON::parse(file.loadFileAsString()).getArray();
+                if (rows == nullptr)
+                {
+                    toasts.show("MIDI map import failed", "Not a valid MIDI map file");
+                    return;
+                }
+
+                int applied = 0;
+                for (auto& rowVar : *rows)
+                {
+                    const auto instrumentId = rowVar.getProperty("instrumentId", {}).toString();
+                    const auto articulationId = rowVar.getProperty("articulationId", {}).toString();
+                    const int midiNote = (int) rowVar.getProperty("midiNote", -1);
+                    if (instrumentId.isEmpty() || articulationId.isEmpty())
+                        continue;
+
+                    // force=true: an imported map has no internal duplicates
+                    // by construction (it came from export), so it should
+                    // always apply cleanly even if it collides with notes
+                    // the kit happened to have before the import started.
+                    if (controller.setArticulationMidiNote(instrumentId, articulationId, midiNote, true)
+                        == Kit::SetNoteResult::Ok)
+                        ++applied;
+                }
+
+                toasts.show("MIDI map imported",
+                            juce::String(applied) + " of " + juce::String(rows->size()) + " note(s) applied");
+            });
+    };
+    addAndMakeVisible(importButton);
+
     editButton.onClick = [this]
     {
         modalHost.show(std::make_unique<InfoDialog>(modalHost, "MIDI MAP", "Editable mapping",
@@ -759,7 +963,7 @@ void MidiMapCard::paint(juce::Graphics& g)
 
             g.setColour(Colours::text);
             g.setFont(DrumVaultLookAndFeel::bodyFont(9.5f));
-            const auto display = inst.name + (inst.articulations.size() > 1 ? " · " + articulation.name : juce::String());
+            const auto display = inst.name + (inst.articulations.size() > 1 ? " - " + articulation.name : juce::String());
             g.drawText(display, row, juce::Justification::centredLeft);
 
             g.setColour(juce::Colour(0xff283138));
@@ -774,6 +978,8 @@ void MidiMapCard::resized()
     auto area = getLocalBounds().reduced(12);
     auto titleRow = area.removeFromTop(20);
     titleLabel.setBounds(titleRow.removeFromLeft(100));
+    importButton.setBounds(titleRow.removeFromLeft(70));
+    titleRow.removeFromLeft(6);
     exportButton.setBounds(titleRow);
     area.removeFromTop(8);
 
@@ -786,8 +992,7 @@ void MidiMapCard::resized()
 
 // ------------------------------------------------------------------- SidePanel
 
-SidePanel::SidePanel(KitEditController& controllerToUse, ToastOverlay& toastsToUse, ModalHost& modalHostToUse,
-                      std::function<void()> onCollapse)
+SidePanel::SidePanel(KitEditController& controllerToUse, ToastOverlay& toastsToUse, ModalHost& modalHostToUse)
     : velocityCard(controllerToUse), masterCard(controllerToUse),
       meterCard(controllerToUse), midiMapCard(controllerToUse, toastsToUse, modalHostToUse)
 {
@@ -799,9 +1004,6 @@ SidePanel::SidePanel(KitEditController& controllerToUse, ToastOverlay& toastsToU
     tinyStatus.setColour(juce::Label::textColourId, Colours::muted);
     tinyStatus.setFont(DrumVaultLookAndFeel::bodyFont(9.0f));
     addAndMakeVisible(tinyStatus);
-
-    collapseButton.onClick = std::move(onCollapse);
-    addAndMakeVisible(collapseButton);
 
     viewport.setViewedComponent(&content, false);
     viewport.setScrollBarsShown(true, false);
@@ -819,10 +1021,8 @@ void SidePanel::resized()
 {
     auto area = getLocalBounds().reduced(14, 14);
     auto headerRow = area.removeFromTop(48);
-    auto headerLeft = headerRow.removeFromLeft(headerRow.getWidth() - 30);
-    eyebrow.setBounds(headerLeft.removeFromTop(20));
-    tinyStatus.setBounds(headerLeft);
-    collapseButton.setBounds(headerRow);
+    eyebrow.setBounds(headerRow.removeFromTop(20));
+    tinyStatus.setBounds(headerRow);
 
     viewport.setBounds(area);
 

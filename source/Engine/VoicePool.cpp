@@ -1,5 +1,6 @@
 #include "VoicePool.h"
 #include <juce_core/juce_core.h>
+#include <cmath>
 
 namespace dsl
 {
@@ -29,6 +30,7 @@ namespace
 }
 
 VoicePool::VoicePool(int maxVoices)
+    : channelPeaks(numMeterBuckets)
 {
     voices.resize((size_t) juce::jmax(1, maxVoices));
 }
@@ -55,7 +57,8 @@ Voice* VoicePool::findFreeOrStealVoice()
 
 void VoicePool::startVoice(std::shared_ptr<const juce::AudioBuffer<float>> buffer,
                             double sourceSampleRate, float gainLinear, int busIndex,
-                            double extraPitchRatio, float pan, uint64_t voiceGroup)
+                            double extraPitchRatio, float pan, uint64_t voiceGroup,
+                            uint64_t meterKey, bool swapStereo)
 {
     if (buffer == nullptr || buffer->getNumSamples() == 0)
         return;
@@ -68,6 +71,8 @@ void VoicePool::startVoice(std::shared_ptr<const juce::AudioBuffer<float>> buffe
     v->pan = juce::jlimit(-1.0f, 1.0f, pan);
     v->busIndex = busIndex;
     v->voiceGroup = voiceGroup;
+    v->meterKey = meterKey;
+    v->swapStereo = swapStereo;
     v->chokeGain = 1.0f;
     v->chokeStepPerSample = 0.0f;
     v->active = true;
@@ -84,6 +89,19 @@ void VoicePool::chokeVoices(uint64_t voiceGroup, double releaseMs)
 
 void VoicePool::renderNextBlock(const std::vector<juce::AudioBuffer<float>*>& busBuffers, int numSamples)
 {
+    // Decay every meter bucket unconditionally each block, the same way
+    // PluginProcessor's busPeaks/masterPeak do — otherwise a channel with no
+    // currently-active voice (its last hit finished ringing out) never gets
+    // touched again below and its meter reading sticks at its last value
+    // forever instead of fading back to silence.
+    constexpr float meterDecay = 0.90f;
+    for (auto& bucket : channelPeaks)
+    {
+        const float prev = bucket.load(std::memory_order_relaxed);
+        if (prev > 0.0f)
+            bucket.store(prev * meterDecay, std::memory_order_relaxed);
+    }
+
     for (auto& v : voices)
     {
         if (! v.active)
@@ -100,6 +118,9 @@ void VoicePool::renderNextBlock(const std::vector<juce::AudioBuffer<float>*>& bu
         const int numBusChannels = busBuffer.getNumChannels();
         const int numSourceSamples = v.buffer->getNumSamples();
         const bool downmixToMono = numSourceChannels >= 2 && numBusChannels == 1;
+        const bool canSwapStereo = v.swapStereo && numSourceChannels == 2 && numBusChannels == 2;
+
+        float voicePeak = 0.0f;
 
         for (int i = 0; i < numSamples; ++i)
         {
@@ -119,7 +140,8 @@ void VoicePool::renderNextBlock(const std::vector<juce::AudioBuffer<float>*>& bu
                 }
                 else
                 {
-                    sample = readInterpolated(*v.buffer, mapSourceChannel(c, numSourceChannels), v.readPosition);
+                    const int sourceChannel = canSwapStereo ? 1 - c : mapSourceChannel(c, numSourceChannels);
+                    sample = readInterpolated(*v.buffer, sourceChannel, v.readPosition);
                 }
 
                 float panGain = 1.0f;
@@ -131,7 +153,9 @@ void VoicePool::renderNextBlock(const std::vector<juce::AudioBuffer<float>*>& bu
                         panGain = v.pan < 0.0f ? 1.0f + v.pan : 1.0f;
                 }
 
-                busBuffer.addSample(c, i, sample * v.gainLinear * v.chokeGain * panGain);
+                const float outSample = sample * v.gainLinear * v.chokeGain * panGain;
+                busBuffer.addSample(c, i, outSample);
+                voicePeak = juce::jmax(voicePeak, std::abs(outSample));
             }
 
             v.readPosition += v.playbackRatio;
@@ -144,6 +168,13 @@ void VoicePool::renderNextBlock(const std::vector<juce::AudioBuffer<float>*>& bu
                     break;
                 }
             }
+        }
+
+        if (voicePeak > 0.0f)
+        {
+            auto& bucket = channelPeaks[v.meterKey % channelPeaks.size()];
+            bucket.store(juce::jmax(voicePeak, bucket.load(std::memory_order_relaxed)),
+                         std::memory_order_relaxed);
         }
     }
 }

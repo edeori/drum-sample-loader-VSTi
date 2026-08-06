@@ -27,6 +27,25 @@ enum class AmbienceFormat
     Stereo
 };
 
+/** The "Add Instrument" dialog's type presets — each maps to a sensible
+    default spot-mic-channel layout (Kick gets In/Out, Snare gets Top/
+    Bottom, everything else gets a single Spot) and Body/Cymbal category,
+    so a deleted stock piece (e.g. Splash) can always be recreated with its
+    proper multi-mic layout, not just a generic single-Spot instrument.
+*/
+enum class InstrumentTypePreset
+{
+    Kick,
+    Snare,
+    Tom,
+    HiHat,
+    Crash,
+    Ride,
+    China,
+    Splash,
+    Effect
+};
+
 class DefaultKitFactory
 {
 public:
@@ -46,6 +65,17 @@ public:
                                              InstrumentCategory category, int midiNote,
                                              AmbienceFormat overheadFormat = AmbienceFormat::MonoPair,
                                              AmbienceFormat roomFormat = AmbienceFormat::MonoPair);
+
+    /** Like createBlankInstrument(), but driven by an InstrumentTypePreset so
+        the "Add Instrument" UI can offer real per-piece defaults (Kick's
+        In/Out spots, Snare's Top/Bottom, etc.) instead of always a single
+        generic Spot channel. */
+    static Instrument createInstrumentFromTypePreset(juce::String id, juce::String name,
+                                                       InstrumentTypePreset type, int midiNote,
+                                                       AmbienceFormat overheadFormat = AmbienceFormat::MonoPair,
+                                                       AmbienceFormat roomFormat = AmbienceFormat::MonoPair);
+
+    static juce::String displayNameForTypePreset(InstrumentTypePreset type);
 
     /** Changes one existing instrument between discrete mono L/R ambience and
         one interleaved stereo channel. Sample mappings belonging to the other

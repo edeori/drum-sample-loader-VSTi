@@ -34,8 +34,12 @@ hangszer editor-paneljében (nem globális kontroll). Példa — Snare, Heavy s�
   → "Snare Top" busz), overhead csatornák → közös "Overheads" busz, room csatornák
   → közös "Room" busz — de bármelyik csatorna átirányítható bármelyik buszra,
   vagy összevonható a "Master" stereo buszba.
-- Ha a host nem multi-out módban van, minden csatorna automatikusan a belső
-  stereo `Master` mixbe esik vissza a beállított faderekkel és pan-nal.
+- Ha egy csatorna kiválasztott busza az adott munkamenetben nem rendelkezik
+  valódi kimeneti csatornákkal — akár mert a host nincs multi-out módban,
+  akár mert (pl. Standalone-ban egy sima sztereó eszközzel) a host
+  egyáltalán nem ad ennyi buszt —, az a csatorna automatikusan a belső
+  stereo `Master` mixbe esik vissza a beállított faderekkel és pan-nal
+  (`DrumEngine::triggerNoteOn`).
 
 ## 4.3 Közös overhead/room master fader-csoport
 
@@ -76,6 +80,9 @@ flowchart TB
 
 ## 4.4 Master fader
 
-- A teljes plugin kimenetére ható végső fader (post-routing, csak a belső
-  stereo mixdown útra hat; a dedikált multi-out buszokra nem, mivel azok a host
-  saját keverőjébe futnak).
+- A teljes plugin kimenetére ható végső fader (post-routing): **minden**
+  betöltött kimeneti buszra hat, a belső stereo mixdown útra csakúgy, mint a
+  dedikált multi-out buszokra — nem csak a `bus:Master` route-ra. Nem
+  helyettesíti, hanem tetézi a csatorna-/busz-szintű routingot: egy gyors
+  "az egész kit legyen halkabb" döntéshez nem kell minden busz saját
+  faderét egyenként állítani.

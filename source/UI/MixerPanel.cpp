@@ -23,10 +23,18 @@ MixerChannelStrip::MixerChannelStrip(KitEditController& controllerToUse, juce::S
     fader.setRange(-60.0, 6.0, 0.1);
     fader.setValue(inst != nullptr ? (double) inst->getChannelFaderDb(micChannelId) : 0.0, juce::dontSendNotification);
     fader.setScrollWheelEnabled(false);
+    lastFaderValue = fader.getValue();
     fader.onValueChange = [this]
     {
-        controller.setChannelFaderDb(micChannelId, (float) fader.getValue());
-        valueLabel.setText(juce::String(fader.getValue(), 1) + " dB", juce::dontSendNotification);
+        const double newValue = fader.getValue();
+        const double delta = newValue - lastFaderValue;
+        lastFaderValue = newValue;
+
+        controller.setChannelFaderDb(micChannelId, (float) newValue);
+        valueLabel.setText(juce::String(newValue, 1) + " dB", juce::dontSendNotification);
+
+        if (linkPartner != nullptr && linkedFlagPtr != nullptr && *linkedFlagPtr)
+            linkPartner->applyLinkedDelta(delta);
     };
     addAndMakeVisible(fader);
 
@@ -34,6 +42,7 @@ MixerChannelStrip::MixerChannelStrip(KitEditController& controllerToUse, juce::S
     valueLabel.setJustificationType(juce::Justification::centred);
     valueLabel.setColour(juce::Label::textColourId, juce::Colour(0xffcbd3d9));
     valueLabel.setFont(DrumVaultLookAndFeel::bodyFont(10.0f));
+    makeDbLabelEditable(valueLabel, fader);
     addAndMakeVisible(valueLabel);
 
     const float pan = micDef != nullptr ? micDef->pan : 0.0f;
@@ -68,6 +77,15 @@ void MixerChannelStrip::resized()
     panLabel.setBounds(area.removeFromTop(16));
 }
 
+void MixerChannelStrip::applyLinkedDelta(double deltaDb)
+{
+    const double newValue = juce::jlimit(fader.getMinimum(), fader.getMaximum(), fader.getValue() + deltaDb);
+    fader.setValue(newValue, juce::dontSendNotification);
+    lastFaderValue = newValue;
+    valueLabel.setText(juce::String(newValue, 1) + " dB", juce::dontSendNotification);
+    controller.setChannelFaderDb(micChannelId, (float) newValue);
+}
+
 // ------------------------------------------------------------------ MixerPanel
 
 MixerPanel::MixerPanel(KitEditController& controllerToUse)
@@ -97,11 +115,43 @@ void MixerPanel::kitEditorStateChanged() { rebuild(); }
 void MixerPanel::rebuild()
 {
     strips.clear();
+    linkButtons.clear();
+    linkButtonAfterIndex.clear();
 
     auto* inst = controller.getSelectedInstrument();
-    if (inst != nullptr)
-        for (auto& mic : inst->micChannels)
-            addAndMakeVisible(strips.add(new MixerChannelStrip(controller, mic.id)));
+    if (inst == nullptr)
+    {
+        resized();
+        return;
+    }
+
+    for (auto& mic : inst->micChannels)
+        addAndMakeVisible(strips.add(new MixerChannelStrip(controller, mic.id)));
+
+    // Wire up + add a link toggle for every adjacent mono L/R ambience pair
+    // (OH_L/OH_R, Room_L/Room_R — see DefaultKitFactory::addAmbienceChannels).
+    for (int i = 0; i + 1 < (int) inst->micChannels.size(); ++i)
+    {
+        auto& a = inst->micChannels[(size_t) i];
+        auto& b = inst->micChannels[(size_t) i + 1];
+        if (! isAmbienceRole(a.role) || a.role != b.role || a.numChannels != 1 || b.numChannels != 1)
+            continue;
+        if (! (a.id.endsWith("_L") && b.id.endsWith("_R")))
+            continue;
+
+        bool* linkedFlag = a.role == MicRole::Overhead ? &inst->ohFaderLinked : &inst->roomFaderLinked;
+        strips[i]->setLinkPartner(strips[i + 1], linkedFlag);
+        strips[i + 1]->setLinkPartner(strips[i], linkedFlag);
+
+        const auto role = a.role;
+        auto* button = linkButtons.add(new juce::TextButton(juce::String::charToString((juce::juce_wchar) 0x1f517)));
+        button->setTooltip(*linkedFlag ? "Unlink L/R faders" : "Link L/R faders");
+        button->setClickingTogglesState(true);
+        button->setToggleState(*linkedFlag, juce::dontSendNotification);
+        button->onClick = [this, role] { controller.toggleAmbienceFaderLink(role); };
+        addAndMakeVisible(button);
+        linkButtonAfterIndex.push_back(i);
+    }
 
     resized();
 }
@@ -127,6 +177,12 @@ void MixerPanel::resized()
     {
         strip->setBounds(x, area.getY(), stripW, area.getHeight());
         x += stripW;
+    }
+
+    for (int i = 0; i < linkButtons.size(); ++i)
+    {
+        const int boundaryX = area.getX() + (linkButtonAfterIndex[(size_t) i] + 1) * stripW;
+        linkButtons[i]->setBounds(boundaryX - 12, area.getY() + 8, 24, 20);
     }
 }
 

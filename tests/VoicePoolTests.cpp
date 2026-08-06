@@ -179,6 +179,34 @@ public:
             // has completed its short click-free release.
             expectWithinAbsoluteError(busBuffer.getSample(0, 3), 1.0f, 0.0001f);
         }
+
+        beginTest("A channel's meter peak decays back to silence once its voice finishes ringing");
+        {
+            VoicePool pool(4);
+            pool.prepare(44100.0);
+
+            auto shortSample = makeConstantBuffer(1, 4, 1.0f);
+            juce::AudioBuffer<float> busBuffer(1, 4);
+            std::vector<juce::AudioBuffer<float>*> buses { &busBuffer };
+
+            constexpr uint64_t meterKey = 5;
+            pool.startVoice(shortSample, 44100.0, 1.0f, 0, 1.0, 0.0f, 0, meterKey);
+            busBuffer.clear();
+            pool.renderNextBlock(buses, 4); // the 4-sample voice fully rings out within this block
+
+            expectEquals(pool.getNumActiveVoices(), 0);
+            expectGreaterThan(pool.getChannelPeak(meterKey), 0.9f);
+
+            // No voices left at all, so only the blanket per-block decay is
+            // touching this bucket now — it must still fade towards silence
+            // rather than sticking at its last value forever.
+            for (int i = 0; i < 80; ++i)
+            {
+                busBuffer.clear();
+                pool.renderNextBlock(buses, 4);
+            }
+            expectLessThan(pool.getChannelPeak(meterKey), 0.001f);
+        }
     }
 };
 

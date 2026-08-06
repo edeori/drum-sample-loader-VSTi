@@ -37,18 +37,18 @@ public:
             auto* ride = kit.findInstrumentById("ride");
             auto* china = kit.findInstrumentById("china");
             expect(hihat != nullptr && hihat->findArticulation("closed") != nullptr);
-            expect(hihat != nullptr && hihat->findArticulation("half_open") != nullptr);
-            expect(hihat != nullptr && hihat->findArticulation("open") != nullptr);
-            expect(crash1 != nullptr && crash1->findArticulation("choke") != nullptr);
-            expect(crash1 != nullptr && crash1->findArticulation("choke")->action == ArticulationAction::Choke);
-            expect(ride != nullptr && ride->findArticulation("hit") != nullptr);
+            expect(hihat != nullptr && hihat->findArticulation("open1") != nullptr);
+            expect(hihat != nullptr && hihat->findArticulation("tip_open") != nullptr);
+            expect(crash1 != nullptr && crash1->findArticulation("left_choke") != nullptr);
+            expect(crash1 != nullptr && crash1->findArticulation("left_choke")->action == ArticulationAction::Choke);
+            expect(ride != nullptr && ride->findArticulation("main") != nullptr);
             expect(ride != nullptr && ride->findArticulation("bell") != nullptr);
             expect(ride != nullptr && ride->findArticulation("bell")->action == ArticulationAction::Trigger);
-            expectEquals(ride->findArticulation("bell")->midiNote, 53);
-            expect(china != nullptr && china->findArticulation("hit") != nullptr);
-            expect(china != nullptr && china->findArticulation("choke") != nullptr);
-            expect(china != nullptr && china->findArticulation("choke")->action == ArticulationAction::Choke);
-            expectEquals(china->findArticulation("choke")->midiNote, 60);
+            expectEquals(ride->findArticulation("bell")->midiNote, 56);
+            expect(china != nullptr && china->findArticulation("left_hit") != nullptr);
+            expect(china != nullptr && china->findArticulation("left_choke") != nullptr);
+            expect(china != nullptr && china->findArticulation("left_choke")->action == ArticulationAction::Choke);
+            expectEquals(china->findArticulation("left_choke")->midiNote, 60);
         }
 
         beginTest("Every default instrument exposes a spot channel");
@@ -125,7 +125,7 @@ public:
         beginTest("instrumentForMidiNote resolves the correct instrument");
         {
             auto kit = DefaultKitFactory::createDefaultKit();
-            auto* snare = kit.instrumentForMidiNote(38);
+            auto* snare = kit.instrumentForMidiNote(27);
             expect(snare != nullptr && snare->id == "snare");
         }
 
@@ -136,7 +136,7 @@ public:
 
             auto result = kit.setInstrumentMidiNote("snare", kicksNote, false);
             expect(result == Kit::SetNoteResult::Conflict);
-            expectEquals(kit.findInstrumentById("snare")->primaryArticulation()->midiNote, 38);
+            expectEquals(kit.findInstrumentById("snare")->primaryArticulation()->midiNote, 27);
             expectEquals(kit.findInstrumentById("kick")->primaryArticulation()->midiNote, kicksNote);
         }
 
@@ -154,18 +154,19 @@ public:
         beginTest("Articulation MIDI reassignment is conflict checked across the whole kit");
         {
             auto kit = DefaultKitFactory::createDefaultKit();
-            auto result = kit.setArticulationMidiNote("hihat", "half_open", 38, false);
+            const int chinaLeftHitNote = kit.findInstrumentById("china")->findArticulation("left_hit")->midiNote;
+            auto result = kit.setArticulationMidiNote("hihat", "open1", chinaLeftHitNote, false);
             expect(result == Kit::SetNoteResult::Conflict);
-            expectEquals(kit.findInstrumentById("hihat")->findArticulation("half_open")->midiNote, 44);
+            expectEquals(kit.findInstrumentById("hihat")->findArticulation("open1")->midiNote, 39);
         }
 
         beginTest("Multiple articulations may be unassigned without conflicting");
         {
             auto kit = DefaultKitFactory::createDefaultKit();
-            expect(kit.setArticulationMidiNote("hihat", "half_open", -1, false) == Kit::SetNoteResult::Ok);
-            expect(kit.setArticulationMidiNote("hihat", "open", -1, false) == Kit::SetNoteResult::Ok);
-            expectEquals(kit.findInstrumentById("hihat")->findArticulation("half_open")->midiNote, -1);
-            expectEquals(kit.findInstrumentById("hihat")->findArticulation("open")->midiNote, -1);
+            expect(kit.setArticulationMidiNote("hihat", "open1", -1, false) == Kit::SetNoteResult::Ok);
+            expect(kit.setArticulationMidiNote("hihat", "open2", -1, false) == Kit::SetNoteResult::Ok);
+            expectEquals(kit.findInstrumentById("hihat")->findArticulation("open1")->midiNote, -1);
+            expectEquals(kit.findInstrumentById("hihat")->findArticulation("open2")->midiNote, -1);
         }
 
         beginTest("Legacy Hi-hat and Crash Main grids gain the required articulations");

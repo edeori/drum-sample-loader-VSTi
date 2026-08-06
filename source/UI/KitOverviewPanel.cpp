@@ -93,10 +93,6 @@ KitOverviewPanel::KitOverviewPanel(KitEditController& controllerToUse, ModalHost
     searchBox.onTextChange = [this] { rebuildCards(); };
     addAndMakeVisible(searchBox);
 
-    addButton.getProperties().set("primary", true);
-    addButton.onClick = [this] { showAddInstrumentDialog(); };
-    addAndMakeVisible(addButton);
-
     addTileButton.onClick = [this] { showAddInstrumentDialog(); };
     viewport.setViewedComponent(&gridContent, false);
     viewport.setScrollBarsShown(true, false);
@@ -172,7 +168,7 @@ void KitOverviewPanel::layoutGrid()
 
 void KitOverviewPanel::showAddInstrumentDialog()
 {
-    modalHost.show(std::make_unique<AddInstrumentDialog>(controller, modalHost), 460, 464);
+    modalHost.show(std::make_unique<AddInstrumentDialog>(controller, modalHost), 460, 392);
 }
 
 void KitOverviewPanel::paint(juce::Graphics& g)
@@ -192,10 +188,6 @@ void KitOverviewPanel::resized()
     toolbar.removeFromLeft(15);
     auto searchArea = toolbar.removeFromLeft(juce::jmin(300, toolbar.getWidth() / 3));
     searchBox.setBounds(searchArea.withSizeKeepingCentre(searchArea.getWidth(), 30));
-
-    toolbar.removeFromLeft(15);
-    auto addArea = toolbar.removeFromRight(160);
-    addButton.setBounds(addArea.withSizeKeepingCentre(addArea.getWidth(), 32));
 
     viewport.setBounds(area.reduced(12, 0).withTrimmedBottom(12));
     layoutGrid();

@@ -45,6 +45,12 @@ bool Instrument::isChannelSoloed(const juce::String& micChannelId) const
     return it != channelSolo.end() && it->second;
 }
 
+bool Instrument::isChannelSwapped(const juce::String& micChannelId) const
+{
+    auto it = channelSwapLR.find(micChannelId);
+    return it != channelSwapLR.end() && it->second;
+}
+
 InstrumentArticulation* Instrument::findArticulation(const juce::String& articulationId)
 {
     for (auto& articulation : articulations)

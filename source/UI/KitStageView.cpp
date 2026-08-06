@@ -185,7 +185,7 @@ const std::map<juce::String, juce::Rectangle<float>>& KitStageView::defaultHotsp
     static const std::map<juce::String, juce::Rectangle<float>> map = {
         { "crash1", { 0.154f, 0.052f, 0.179f, 0.097f } },
         { "hihat",  { 0.089f, 0.250f, 0.158f, 0.084f } },
-        { "splash", { 0.449f, 0.143f, 0.082f, 0.057f } },
+        { "splash1", { 0.449f, 0.143f, 0.082f, 0.057f } },
         { "tom1",   { 0.306f, 0.204f, 0.127f, 0.088f } },
         { "tom2",   { 0.499f, 0.205f, 0.125f, 0.088f } },
         { "snare",  { 0.243f, 0.368f, 0.153f, 0.072f } },
@@ -209,11 +209,17 @@ void KitStageView::rebuildPads()
 
     for (auto& inst : controller.getWorkingKit().instruments)
     {
+        // Hi-hat deliberately has no fixed default here (unlike Ride below):
+        // leaving this empty makes both the hit-glow and the click-to-preview
+        // fall through to the instrument's first articulation (see
+        // HotspotPad::paint()/mouseUp() and KitEditController::selectInstrument()),
+        // the same "front of the list" rule Kit Overview already uses — so
+        // whichever articulation a preset's author placed first is what plays,
+        // instead of a second, independently maintained default that can (and
+        // did) drift out of sync with the articulation set.
         juce::String defaultArticulationId;
-        if (inst.id == "hihat" && inst.findArticulation("open") != nullptr)
-            defaultArticulationId = "open";
-        else if (inst.id == "ride" && inst.findArticulation("hit") != nullptr)
-            defaultArticulationId = "hit";
+        if (inst.id == "ride" && inst.findArticulation("main") != nullptr)
+            defaultArticulationId = "main";
 
         addAndMakeVisible(pads.add(new HotspotPad(
             controller, inst.id, defaultArticulationId, inst.id)));

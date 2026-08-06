@@ -3,6 +3,7 @@
 #include "DrumVaultLookAndFeel.h"
 #include "KitEditController.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <vector>
 
 namespace dsl::ui
 {
@@ -22,6 +23,16 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
+    /** Wires this strip to its OH_L/OH_R (or Room_L/Room_R) sibling: while
+        *linkedFlag is true, dragging either fader mirrors the dB delta onto
+        the other. Both strips of a pair must be linked to each other. */
+    void setLinkPartner(MixerChannelStrip* partner, bool* linkedFlag) { linkPartner = partner; linkedFlagPtr = linkedFlag; }
+
+    /** Applies a dB delta pushed by a linked partner's drag, without
+        re-triggering this strip's own onValueChange (and so without
+        re-mirroring back). */
+    void applyLinkedDelta(double deltaDb);
+
 private:
     KitEditController& controller;
     juce::String micChannelId;
@@ -30,6 +41,10 @@ private:
     ResettableSlider fader;
     juce::Label panLabel;
     juce::Label valueLabel;
+
+    MixerChannelStrip* linkPartner = nullptr;
+    bool* linkedFlagPtr = nullptr;
+    double lastFaderValue = 0.0;
 };
 
 /** CHANNEL MIX panel: one fader per mic channel of the selected instrument. */
@@ -49,6 +64,12 @@ private:
     KitEditController& controller;
     juce::Label heading, statusLabel;
     juce::OwnedArray<MixerChannelStrip> strips;
+
+    // One small link/unlink toggle per adjacent mono L/R ambience pair found
+    // in rebuild(); linkButtonAfterIndex[i] is the strips[] index the button
+    // straddles (sits on the boundary between that strip and the next).
+    juce::OwnedArray<juce::TextButton> linkButtons;
+    std::vector<int> linkButtonAfterIndex;
 };
 
 } // namespace dsl::ui

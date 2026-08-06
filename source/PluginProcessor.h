@@ -75,6 +75,12 @@ public:
             : 0.0f;
     }
 
+    // Post-fader, pre-bus-mix peak for one originating mic channel — see
+    // DrumEngine::getChannelPeak/meterKeyFor. This is what the Global Mixer's
+    // per-strip meters poll, so a channel's meter reflects only its own hits
+    // even when several channels share the same output bus.
+    float getChannelPeak(uint64_t meterKey) const { return engine.getChannelPeak(meterKey); }
+
 private:
     static BusesProperties buildBusesProperties();
 

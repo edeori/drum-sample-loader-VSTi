@@ -59,12 +59,27 @@ public:
     std::map<juce::String, bool> channelMuted;         // micChannel id -> muted (Global Mixer)
     std::map<juce::String, bool> channelSolo;          // micChannel id -> soloed (Global Mixer)
 
+    // micChannel id -> L/R swapped (Global Mixer). Applied at trigger time in
+    // DrumEngine against whatever's actually loaded for that hit: a mono
+    // sample gets its pan mirrored, a genuinely stereo sample gets its two
+    // channels swapped outright — see DrumEngine::triggerNoteOn.
+    std::map<juce::String, bool> channelSwapLR;
+
+    // Kit Editor Channel Mix: when linked, dragging one of the OH_L/OH_R (or
+    // Room_L/Room_R) mono fader pair mirrors the dB delta onto its sibling.
+    // Only meaningful for a mono L/R pair (Stereo-format ambience has one
+    // shared fader already). Defaults linked — moving them together is the
+    // common case.
+    bool ohFaderLinked = true;
+    bool roomFaderLinked = true;
+
     MicChannelDef* findChannel(const juce::String& micChannelId);
     const MicChannelDef* findChannel(const juce::String& micChannelId) const;
     float getChannelFaderDb(const juce::String& micChannelId) const;
     juce::String getChannelRouting(const juce::String& micChannelId) const;
     bool isChannelMuted(const juce::String& micChannelId) const;
     bool isChannelSoloed(const juce::String& micChannelId) const;
+    bool isChannelSwapped(const juce::String& micChannelId) const;
     InstrumentArticulation* findArticulation(const juce::String& articulationId);
     const InstrumentArticulation* findArticulation(const juce::String& articulationId) const;
     InstrumentArticulation* primaryArticulation();

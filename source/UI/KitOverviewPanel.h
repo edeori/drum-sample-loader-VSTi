@@ -49,7 +49,6 @@ private:
 
     juce::Label heading, countLabel;
     juce::TextEditor searchBox;
-    juce::TextButton addButton { "+  ADD INSTRUMENT" };
 
     juce::Viewport viewport;
     juce::Component gridContent;

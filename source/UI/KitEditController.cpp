@@ -79,11 +79,10 @@ void KitEditController::selectLayer(int layerIndex)
     notifyListeners();
 }
 
-void KitEditController::addInstrument(const juce::String& name, InstrumentCategory category, int midiNote,
-                                       AmbienceFormat overheadFormat, AmbienceFormat roomFormat)
+void KitEditController::addInstrumentFromType(const juce::String& name, InstrumentTypePreset type, int midiNote)
 {
     auto id = makeUniqueId(name);
-    auto inst = DefaultKitFactory::createBlankInstrument(id, name, category, midiNote, overheadFormat, roomFormat);
+    auto inst = DefaultKitFactory::createInstrumentFromTypePreset(id, name, type, midiNote);
 
     if (workingKit.instrumentForMidiNote(midiNote) != nullptr)
         inst.primaryArticulation()->midiNote = -1; // requested note already taken — leave unassigned
@@ -644,6 +643,21 @@ void KitEditController::setChannelFaderDb(const juce::String& micChannelId, floa
     }
 }
 
+void KitEditController::toggleAmbienceFaderLink(MicRole role)
+{
+    if (auto* inst = getSelectedInstrument())
+    {
+        if (role == MicRole::Overhead)
+            inst->ohFaderLinked = ! inst->ohFaderLinked;
+        else if (role == MicRole::Room)
+            inst->roomFaderLinked = ! inst->roomFaderLinked;
+        else
+            return;
+
+        notifyListeners();
+    }
+}
+
 void KitEditController::setChannelFaderDbFor(const juce::String& instrumentId, const juce::String& micChannelId, float db)
 {
     if (auto* inst = workingKit.findInstrumentById(instrumentId))
@@ -711,6 +725,16 @@ void KitEditController::toggleChannelSoloFor(const juce::String& instrumentId, c
     }
 }
 
+void KitEditController::toggleChannelSwapFor(const juce::String& instrumentId, const juce::String& micChannelId)
+{
+    if (auto* inst = workingKit.findInstrumentById(instrumentId))
+    {
+        inst->channelSwapLR[micChannelId] = ! inst->isChannelSwapped(micChannelId);
+        pushToEngine();
+        notifyListeners();
+    }
+}
+
 void KitEditController::toggleOverheadMute()
 {
     workingKit.overheadMuted = ! workingKit.overheadMuted;
@@ -735,6 +759,20 @@ void KitEditController::toggleRoomMute()
 void KitEditController::toggleRoomSolo()
 {
     workingKit.roomSolo = ! workingKit.roomSolo;
+    pushToEngine();
+    notifyListeners();
+}
+
+void KitEditController::toggleOverheadSwap()
+{
+    workingKit.overheadSwapLR = ! workingKit.overheadSwapLR;
+    pushToEngine();
+    notifyListeners();
+}
+
+void KitEditController::toggleRoomSwap()
+{
+    workingKit.roomSwapLR = ! workingKit.roomSwapLR;
     pushToEngine();
     notifyListeners();
 }
@@ -909,7 +947,7 @@ void KitEditController::loadPresetViaDialog()
     });
 }
 
-void KitEditController::exportDrumsetViaDialog(DrumsetExportCallback completionCallback)
+void KitEditController::exportDrumsetViaDialog(const juce::String& desiredExportName, DrumsetExportCallback completionCallback)
 {
     if (drumsetExportInProgress)
     {
@@ -925,14 +963,14 @@ void KitEditController::exportDrumsetViaDialog(DrumsetExportCallback completionC
     const auto flags = juce::FileBrowserComponent::openMode
                      | juce::FileBrowserComponent::canSelectDirectories;
 
-    activeChooser->launchAsync(flags, [this, completion = std::move(completionCallback)](const juce::FileChooser& fc) mutable
+    activeChooser->launchAsync(flags, [this, desiredExportName, completion = std::move(completionCallback)](const juce::FileChooser& fc) mutable
     {
         const auto parentDirectory = fc.getResult();
         activeChooser.reset();
         if (! parentDirectory.isDirectory())
             return;
 
-        const auto baseName = DrumsetExporter::suggestedDirectoryName(workingKit.kitName);
+        const auto baseName = DrumsetExporter::sanitizeExportName(desiredExportName);
         const auto packageDirectory = parentDirectory.getNonexistentChildFile(baseName, {}, true);
         startDrumsetExport(packageDirectory, false, std::move(completion));
     });

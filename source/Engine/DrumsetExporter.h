@@ -34,6 +34,11 @@ public:
 
     static bool isDrumsetExportDirectory(const juce::File& directory);
     static juce::String suggestedDirectoryName(const juce::String& kitName);
+
+    /** Sanitizes a user-typed export name into a safe folder name, without the
+        "_Swarm_Drumset" suffix that suggestedDirectoryName() appends for the
+        auto-generated default. */
+    static juce::String sanitizeExportName(const juce::String& desiredName);
 };
 
 } // namespace dsl

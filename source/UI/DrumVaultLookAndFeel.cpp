@@ -13,6 +13,25 @@ void paintPanelBackground(juce::Graphics& g, juce::Rectangle<float> bounds, floa
     g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
 }
 
+void makeDbLabelEditable(juce::Label& label, juce::Slider& slider)
+{
+    label.setEditable(false, true, false);
+    label.onTextChange = [&label, &slider]
+    {
+        const auto numeric = label.getText().retainCharacters("-0123456789.");
+        if (numeric.isNotEmpty())
+        {
+            const double value = juce::jlimit(slider.getMinimum(), slider.getMaximum(), numeric.getDoubleValue());
+            slider.setValue(value, juce::sendNotificationSync);
+        }
+
+        // Always leave the label in the canonical "X.X dB" form — the
+        // slider's own onValueChange already does this when the value
+        // actually changed, but re-typing the same number wouldn't fire it.
+        label.setText(juce::String(slider.getValue(), 1) + " dB", juce::dontSendNotification);
+    };
+}
+
 DrumVaultLookAndFeel::DrumVaultLookAndFeel()
 {
     setColour(juce::ResizableWindow::backgroundColourId, Colours::bg);

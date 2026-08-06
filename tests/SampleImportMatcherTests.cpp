@@ -75,35 +75,44 @@ public:
 
         beginTest("Dryblood chk shorthand targets Choke and preserves explicit selection");
         {
-            auto kit = DefaultKitFactory::createDefaultKit();
-            auto* china = kit.findInstrumentById("china");
-            expect(china != nullptr);
-            if (china != nullptr)
-            {
-                const auto chkName = juce::String("China 4_2 (chk)-OH R");
-                china->micChannels.push_back({ "Room_M", "Room M", MicRole::Room, 1, 0.0f });
-                const auto oh = SampleImportMatcher::match(chkName, *china);
-                const auto room = SampleImportMatcher::match("China 4_2 (chk)-Room R", *china);
-                const auto roomMid = SampleImportMatcher::match("China 4_2 (chk)-Room M", *china);
-                const auto spot = SampleImportMatcher::match("China 4_2 (chk)-Spot", *china);
-                expect(oh.has_value() && oh->channelId == "OH_R");
-                expect(room.has_value() && room->channelId == "Room_R");
-                expect(roomMid.has_value() && roomMid->channelId == "Room_M");
-                expect(spot.has_value() && spot->channelId == "Spot");
-                expect(oh.has_value() && room.has_value() && oh->variationKey == room->variationKey);
-                expect(oh.has_value() && roomMid.has_value() && oh->variationKey == roomMid->variationKey);
-                expect(oh.has_value() && spot.has_value() && oh->variationKey == spot->variationKey);
-                expect(SampleImportMatcher::hasChokeMarker(chkName));
-                expect(SampleImportMatcher::hasRoomMidMarker("China 4_2 (chk)-Room M"));
-                expectEquals(SampleImportMatcher::targetArticulationId(chkName, *china, "hit"),
-                             juce::String("choke"));
-                expectEquals(SampleImportMatcher::targetArticulationId(
-                                 "China 4_2-OH R", *china, "choke"),
-                             juce::String("choke"));
-                expectEquals(SampleImportMatcher::targetArticulationId(
-                                 "China 4_2-OH R", *china, "hit"),
-                             juce::String("hit"));
-            }
+            // A literal Hit/Choke pair (rather than the default kit's china,
+            // which now has positional Left/Right Hit/Choke zones per
+            // docs/05-midi-mapping.md) — this test is about
+            // targetArticulationId()'s generic choke-marker redirect, not
+            // about china's specific default shape.
+            auto china = DefaultKitFactory::createBlankInstrument(
+                "china", "China", InstrumentCategory::Cymbal, 52);
+            china.articulations.front().id = "hit";
+            china.articulations.front().name = "Hit";
+            InstrumentArticulation choke;
+            choke.id = "choke";
+            choke.name = "Choke";
+            choke.action = ArticulationAction::Choke;
+            china.articulations.push_back(choke);
+
+            const auto chkName = juce::String("China 4_2 (chk)-OH R");
+            china.micChannels.push_back({ "Room_M", "Room M", MicRole::Room, 1, 0.0f });
+            const auto oh = SampleImportMatcher::match(chkName, china);
+            const auto room = SampleImportMatcher::match("China 4_2 (chk)-Room R", china);
+            const auto roomMid = SampleImportMatcher::match("China 4_2 (chk)-Room M", china);
+            const auto spot = SampleImportMatcher::match("China 4_2 (chk)-Spot", china);
+            expect(oh.has_value() && oh->channelId == "OH_R");
+            expect(room.has_value() && room->channelId == "Room_R");
+            expect(roomMid.has_value() && roomMid->channelId == "Room_M");
+            expect(spot.has_value() && spot->channelId == "Spot");
+            expect(oh.has_value() && room.has_value() && oh->variationKey == room->variationKey);
+            expect(oh.has_value() && roomMid.has_value() && oh->variationKey == roomMid->variationKey);
+            expect(oh.has_value() && spot.has_value() && oh->variationKey == spot->variationKey);
+            expect(SampleImportMatcher::hasChokeMarker(chkName));
+            expect(SampleImportMatcher::hasRoomMidMarker("China 4_2 (chk)-Room M"));
+            expectEquals(SampleImportMatcher::targetArticulationId(chkName, china, "hit"),
+                         juce::String("choke"));
+            expectEquals(SampleImportMatcher::targetArticulationId(
+                             "China 4_2-OH R", china, "choke"),
+                         juce::String("choke"));
+            expectEquals(SampleImportMatcher::targetArticulationId(
+                             "China 4_2-OH R", china, "hit"),
+                         juce::String("hit"));
         }
 
         beginTest("Unrelated files are not imported silently");

@@ -37,6 +37,14 @@ private:
     juce::TextButton openButton { "LOAD" };
     juce::TextButton saveButton { "SAVE" };
     juce::TextButton drumsetButton { "DRUMSET" };
+
+#if JucePlugin_Build_Standalone
+    // Only meaningful when actually running as the Standalone app (the
+    // shared-code object file is compiled once with every enabled format's
+    // JucePlugin_Build_* macro set, so this can't be resolved at compile
+    // time — hidden at runtime instead, see the constructor).
+    juce::TextButton audioMidiButton { "AUDIO/MIDI" };
+#endif
 };
 
 } // namespace dsl::ui
