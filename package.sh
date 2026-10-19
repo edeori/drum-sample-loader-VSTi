@@ -13,7 +13,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 PACKAGE_NAME="Swarm"
 IDENTIFIER_BASE="com.mothproduction.swarm"
-VERSION="0.1.0"
+VERSION="$(sed -nE 's/^project\(DrumSampleLoaderVSTi VERSION ([0-9.]+).*/\1/p' CMakeLists.txt)"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid CMake project version" >&2; exit 1; }
 
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-Developer ID Application: Márton Ferenczi (Y8272MS92K)}"
 INSTALLER_IDENTITY="${INSTALLER_IDENTITY:-Developer ID Installer: Márton Ferenczi (Y8272MS92K)}"
