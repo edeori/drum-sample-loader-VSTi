@@ -26,10 +26,10 @@ COMPONENTS_DIR="$PKG_DIR/components"
 OUTPUT_PKG="$BUILD_DIR/${PACKAGE_NAME}.pkg"
 
 echo "==> Configuring..."
-cmake -S . -B "$BUILD_DIR" >/dev/null
+cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release >/dev/null
 
 echo "==> Building VST3 + AU + Standalone (Release)..."
-cmake --build "$BUILD_DIR" \
+cmake --build "$BUILD_DIR" --config Release \
   --target DrumSampleLoaderVSTi_VST3 DrumSampleLoaderVSTi_AU DrumSampleLoaderVSTi_Standalone \
   -j "$(sysctl -n hw.ncpu)"
 
