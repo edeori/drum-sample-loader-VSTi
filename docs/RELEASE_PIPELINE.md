@@ -16,3 +16,8 @@ Célok:
 A Windows-telepítő x64 VST3-at és választható standalone alkalmazást tartalmaz, a Mac csomag AU-t is. A projektben jelenleg nincs aktiválási/licencelési modul. A Windows-telepítő nem Authenticode-aláírt; a Defender-vizsgálat nem biztosít SmartScreen-reputációt.
 
 A közös workflow teljes commitazonosítóval rögzített az `edeori/vst-release-pipeline` repóból. A build nem kapja meg a MinIO feltöltési kulcsait.
+
+## Ellenőrzés (2026-10-19)
+
+- Build: https://github.com/edeori/drum-sample-loader-VSTi/actions/runs/39267111695 — Mac és Windows sikeres, Mac aláírás/notarizáció ellenőrizve, Defender találat nélkül.
+- Külön Publish-próba: https://github.com/edeori/drum-sample-loader-VSTi/actions/runs/39267132599 — az artifactok letöltése és a Defender-hash ellenőrzése sikeres. `verify_only=true`, a feltöltési lépés kihagyva. Az éles telepítők ETag és méret alapján változatlanok.
