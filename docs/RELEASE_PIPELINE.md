@@ -21,3 +21,9 @@ A közös workflow teljes commitazonosítóval rögzített az `edeori/vst-releas
 
 - Build: https://github.com/edeori/drum-sample-loader-VSTi/actions/runs/39267111695 — Mac és Windows sikeres, Mac aláírás/notarizáció ellenőrizve, Defender találat nélkül.
 - Külön Publish-próba: https://github.com/edeori/drum-sample-loader-VSTi/actions/runs/39267132599 — az artifactok letöltése és a Defender-hash ellenőrzése sikeres. `verify_only=true`, a feltöltési lépés kihagyva. Az éles telepítők ETag és méret alapján változatlanok.
+
+## Build kiválasztása a Publish indításakor
+
+A `build_selection` legördülő alapértéke **Latest successful build**. Ilyenkor a `build_run_id` mezőt hagyd üresen: a workflow az alapértelmezett (`main`) ág legutóbb létrehozott sikeres buildjét választja. PR-/másik ági buildek nem választhatók automatikusan. Régi futás újrafuttatása nem lesz ettől a legújabb build. A kiválasztás a Publish végrehajtásakor történik, a futásazonosító egyszer rögzül minden artifacthoz.
+
+Konkrét vagy tagről készült buildhez válaszd a **Specific build ID** opciót, majd add meg a `build_run_id` értékét. Mindkét mód használható `verify_only=true` mellett is. A kiválasztott build linkje és forráscommitja megjelenik az összesítőben; hiányzó/lejárt artifact vagy hibás Defender-jelentés esetén a Publish leáll.
